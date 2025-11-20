@@ -33,7 +33,15 @@ exports.handler = async (event, context) => {
         const db = initializeFirebase();
         const seatsCollection = db.collection('seats');
 
-        const path = event.path.replace('/.netlify/functions/seats', '');
+        let path = event.path;
+
+        // Remove the function prefix, handling both rewritten and direct paths
+        if (path.startsWith('/.netlify/functions/seats')) {
+            path = path.replace('/.netlify/functions/seats', '');
+        } else if (path.startsWith('/api/seats')) {
+            path = path.replace('/api/seats', '');
+        }
+
         const method = event.httpMethod;
 
         // Parse the path and extract parameters
@@ -368,7 +376,7 @@ exports.handler = async (event, context) => {
             headers,
             body: JSON.stringify({
                 success: false,
-                message: 'Route not found'
+                message: `Route not found. Received path: ${event.path}, Parsed path: ${path}`
             })
         };
 

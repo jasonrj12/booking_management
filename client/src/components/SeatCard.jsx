@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { FaUserAlt } from 'react-icons/fa';
 
-const SeatCard = ({ seat, onClick }) => {
+const SeatCard = memo(({ seat, onClick }) => {
     const isBooked = seat.isBooked;
     const isMale = isBooked && seat.gender === 'male';
     const isFemale = isBooked && seat.gender === 'female';
@@ -49,6 +49,14 @@ const SeatCard = ({ seat, onClick }) => {
             </div>
         </div>
     );
-};
+}, (prevProps, nextProps) => {
+    // Custom comparison - only re-render if seat data changed
+    return prevProps.seat._id === nextProps.seat._id &&
+        prevProps.seat.isBooked === nextProps.seat.isBooked &&
+        prevProps.seat.passengerName === nextProps.seat.passengerName &&
+        prevProps.seat.gender === nextProps.seat.gender;
+});
+
+SeatCard.displayName = 'SeatCard';
 
 export default SeatCard;

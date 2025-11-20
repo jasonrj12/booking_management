@@ -5,6 +5,47 @@ const { initializeFirebase } = require('../config/firebase');
 const db = initializeFirebase();
 const seatsCollection = db.collection('seats');
 
+// In-memory cache for seat data
+const seatCache = new Map();
+const CACHE_TTL = 30000; // 30 seconds
+
+// Cache helper functions
+const getCacheKey = (route, date) => `${route}-${date}`;
+
+const getCachedSeats = (route, date) => {
+    const key = getCacheKey(route, date);
+    const cached = seatCache.get(key);
+
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return cached.data;
+    }
+
+    return null;
+};
+
+const setCachedSeats = (route, date, data) => {
+    const key = getCacheKey(route, date);
+    seatCache.set(key, {
+        data,
+        timestamp: Date.now()
+    });
+};
+
+const invalidateCache = (route, date) => {
+    const key = getCacheKey(route, date);
+    seatCache.delete(key);
+};
+
+// Clear old cache entries periodically (every 5 minutes)
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of seatCache.entries()) {
+        if (now - value.timestamp > CACHE_TTL) {
+            seatCache.delete(key);
+        }
+    }
+}, 300000);
+
 // Helper function to determine seat position
 const getSeatPosition = (seatNumber) => {
     // Back row (seats 47-51) - 5 seats
@@ -97,6 +138,12 @@ router.get('/', async (req, res) => {
 
         const targetDate = date || new Date().toISOString().split('T')[0]; // Default to today
 
+        // Check cache first
+        const cachedSeats = getCachedSeats(route, targetDate);
+        if (cachedSeats) {
+            return res.json({ success: true, data: cachedSeats });
+        }
+
         const snapshot = await seatsCollection
             .where('route', '==', route)
             .where('date', '==', targetDate)
@@ -112,6 +159,9 @@ router.get('/', async (req, res) => {
 
         // Sort in memory to avoid Firestore composite index requirement
         seats.sort((a, b) => a.seatNumber - b.seatNumber);
+
+        // Cache the results
+        setCachedSeats(route, targetDate, seats);
 
         res.json({ success: true, data: seats });
     } catch (error) {
@@ -173,10 +223,15 @@ router.post('/:id/book', async (req, res) => {
         });
 
         const updatedDoc = await seatRef.get();
+        const seatData = updatedDoc.data();
+
+        // Invalidate cache for this route and date
+        invalidateCache(seatData.route, seatData.date);
+
         res.json({
             success: true,
             message: 'Seat booked successfully',
-            data: { _id: updatedDoc.id, ...updatedDoc.data() }
+            data: { _id: updatedDoc.id, ...seatData }
         });
     } catch (error) {
         console.error('Error booking seat:', error);
@@ -226,10 +281,15 @@ router.put('/:id/update', async (req, res) => {
         });
 
         const updatedDoc = await seatRef.get();
+        const seatData = updatedDoc.data();
+
+        // Invalidate cache for this route and date
+        invalidateCache(seatData.route, seatData.date);
+
         res.json({
             success: true,
             message: 'Passenger information updated successfully',
-            data: { _id: updatedDoc.id, ...updatedDoc.data() }
+            data: { _id: updatedDoc.id, ...seatData }
         });
     } catch (error) {
         console.error('Error updating passenger information:', error);
@@ -265,10 +325,15 @@ router.delete('/:id/cancel', async (req, res) => {
         });
 
         const updatedDoc = await seatRef.get();
+        const seatData = updatedDoc.data();
+
+        // Invalidate cache for this route and date
+        invalidateCache(seatData.route, seatData.date);
+
         res.json({
             success: true,
             message: 'Booking cancelled successfully',
-            data: { _id: updatedDoc.id, ...updatedDoc.data() }
+            data: { _id: updatedDoc.id, ...seatData }
         });
     } catch (error) {
         console.error('Error cancelling booking:', error);
@@ -308,10 +373,15 @@ router.patch('/:id/pickup', async (req, res) => {
         });
 
         const updatedDoc = await seatRef.get();
+        const seatData = updatedDoc.data();
+
+        // Invalidate cache for this route and date
+        invalidateCache(seatData.route, seatData.date);
+
         res.json({
             success: true,
             message: `Passenger marked as ${isPickedUp ? 'picked up' : 'waiting'}`,
-            data: { _id: updatedDoc.id, ...updatedDoc.data() }
+            data: { _id: updatedDoc.id, ...seatData }
         });
     } catch (error) {
         console.error('Error updating pickup status:', error);

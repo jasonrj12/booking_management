@@ -1,24 +1,29 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import SeatCard from './SeatCard';
 import { MdAirlineSeatReclineNormal } from 'react-icons/md';
 
-const SeatLayout = ({ seats, onSeatClick }) => {
-    // Separate standard seats (1-46) and back row seats (47-51)
-    const standardSeats = seats.filter(seat => seat.seatNumber <= 46);
-    const backRowSeats = seats.filter(seat => seat.seatNumber >= 47 && seat.seatNumber <= 51);
+const SeatLayout = memo(({ seats, onSeatClick }) => {
+    // Memoize seat separation and row calculations
+    const { standardRows, backRowSeats } = useMemo(() => {
+        // Separate standard seats (1-46) and back row seats (47-51)
+        const standardSeats = seats.filter(seat => seat.seatNumber <= 46);
+        const backRowSeats = seats.filter(seat => seat.seatNumber >= 47 && seat.seatNumber <= 51);
 
-    // Group standard seats into rows
-    const standardRows = [];
+        // Group standard seats into rows
+        const standardRows = [];
 
-    // Rows 1-11: seats 1-44 (11 rows of 4 seats each)
-    for (let i = 0; i < 44; i += 4) {
-        standardRows.push(standardSeats.slice(i, i + 4));
-    }
+        // Rows 1-11: seats 1-44 (11 rows of 4 seats each)
+        for (let i = 0; i < 44; i += 4) {
+            standardRows.push(standardSeats.slice(i, i + 4));
+        }
 
-    // Row 12: seats 45-46 (separate row)
-    if (standardSeats.length >= 46) {
-        standardRows.push(standardSeats.slice(44, 46)); // Just seats 45 and 46
-    }
+        // Row 12: seats 45-46 (separate row)
+        if (standardSeats.length >= 46) {
+            standardRows.push(standardSeats.slice(44, 46)); // Just seats 45 and 46
+        }
+
+        return { standardRows, backRowSeats };
+    }, [seats]);
 
     return (
         <div className="glass-effect p-4 md:p-6">
@@ -140,6 +145,8 @@ const SeatLayout = ({ seats, onSeatClick }) => {
             </div>
         </div>
     );
-};
+});
+
+SeatLayout.displayName = 'SeatLayout';
 
 export default SeatLayout;

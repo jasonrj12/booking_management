@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import axios from 'axios';
 import SeatLayout from './components/SeatLayout';
-import BookingForm from './components/BookingForm';
 import PassengerList from './components/PassengerList';
-import GenderPopup from './components/GenderPopup';
-import ConfirmDialog from './components/ConfirmDialog';
 import { FaBus, FaRoute, FaSyncAlt } from 'react-icons/fa';
 import { jsPDF } from 'jspdf';
 import './index.css';
+
+// Lazy load modal components to reduce initial bundle size
+const BookingForm = lazy(() => import('./components/BookingForm'));
+const GenderPopup = lazy(() => import('./components/GenderPopup'));
+const ConfirmDialog = lazy(() => import('./components/ConfirmDialog'));
 
 function App() {
   const [seats, setSeats] = useState([]);
@@ -83,7 +85,7 @@ function App() {
     }
   }, [selectedRoute, selectedDate, initialized]);
 
-  const fetchSeats = async () => {
+  const fetchSeats = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axios.get(`/api/seats?route=${selectedRoute}&date=${selectedDate}`);
@@ -99,9 +101,9 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedRoute, selectedDate, storageAllowed, storageKey]);
 
-  const handleSeatClick = (seat) => {
+  const handleSeatClick = useCallback((seat) => {
     if (seat.isBooked) {
       // If booked, show edit form
       setSelectedSeats([{ seat, gender: seat.gender }]);
@@ -120,9 +122,9 @@ function App() {
     // If available and not selected yet, show gender popup
     setCurrentSeat(seat);
     setShowGenderPopup(true);
-  };
+  }, [selectedSeats]);
 
-  const handleGenderSelect = (seat, gender) => {
+  const handleGenderSelect = useCallback((seat, gender) => {
     // Add seat with gender to selection (prevent duplicates)
     setSelectedSeats(prev => {
       const alreadySelected = prev.some(({ seat: selectedSeat }) => selectedSeat._id === seat._id);
@@ -133,14 +135,14 @@ function App() {
     });
     setShowGenderPopup(false);
     setCurrentSeat(null);
-  };
+  }, []);
 
-  const handleGenderPopupClose = () => {
+  const handleGenderPopupClose = useCallback(() => {
     setShowGenderPopup(false);
     setCurrentSeat(null);
-  };
+  }, []);
 
-  const handleBooking = async (formData) => {
+  const handleBooking = useCallback(async (formData) => {
     try {
       // Book all selected seats
       for (const { seat, gender } of selectedSeats) {
@@ -159,9 +161,9 @@ function App() {
       alert(error.response?.data?.message || 'Error booking seat');
       throw error;
     }
-  };
+  }, [selectedSeats, fetchSeats]);
 
-  const handleUpdateBooking = async (formData) => {
+  const handleUpdateBooking = useCallback(async (formData) => {
     try {
       const { seat, gender } = selectedSeats[0];
       const response = await axios.put(
@@ -180,14 +182,14 @@ function App() {
       alert(error.response?.data?.message || 'Error updating booking');
       throw error;
     }
-  };
+  }, [selectedSeats, fetchSeats]);
 
-  const handleCancelBooking = async (seat) => {
+  const handleCancelBooking = useCallback(async (seat) => {
     setSeatToCancel(seat);
     setShowConfirmDialog(true);
-  };
+  }, []);
 
-  const handleTogglePickup = async (seat) => {
+  const handleTogglePickup = useCallback(async (seat) => {
     try {
       await axios.patch(`/api/seats/${seat._id}/pickup`, { isPickedUp: !seat.isPickedUp });
       await fetchSeats();
@@ -195,7 +197,7 @@ function App() {
       console.error('Error updating pickup status:', error);
       alert(error.response?.data?.message || 'Error updating pickup status');
     }
-  };
+  }, [fetchSeats]);
 
   const requestStoragePermission = async (allow) => {
     if (typeof window === 'undefined') return;
@@ -379,8 +381,9 @@ function App() {
     }
   };
 
-  const bookedCount = seats.filter(seat => seat.isBooked).length;
-  const availableCount = seats.length - bookedCount;
+  const bookedCount = useMemo(() => seats.filter(seat => seat.isBooked).length, [seats]);
+  const availableCount = useMemo(() => seats.length - bookedCount, [seats.length, bookedCount]);
+  const bookedSeats = useMemo(() => seats.filter(s => s.isBooked), [seats]);
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -402,31 +405,55 @@ function App() {
 
             {/* Route Selector & Controls */}
             <div className="flex flex-wrap items-center gap-3 md:gap-4">
-              {/* Route */}
-              <div className="flex items-center gap-2 bg-slate-800/50 p-2 rounded-lg border border-white/5">
-                <div className="flex items-center gap-2 text-blue-300">
-                  <FaRoute className="text-lg" />
-                  <span className="font-semibold hidden md:inline">Route:</span>
+              {/* Route - Modern Segmented Control */}
+              <div className="relative">
+                <div className="flex items-center gap-2 bg-slate-800/50 p-1.5 rounded-xl border border-white/10 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 text-blue-300 px-2">
+                    <FaRoute className="text-lg" />
+                    <span className="font-semibold text-xs md:text-sm hidden sm:inline">Route:</span>
+                  </div>
+                  <div className="relative flex bg-slate-900/50 rounded-lg p-1">
+                    {routes.map((route, index) => {
+                      const isSelected = selectedRoute === route;
+                      const routeParts = route.split(' to ');
+                      return (
+                        <button
+                          key={route}
+                          onClick={() => {
+                            setSelectedRoute(route);
+                            setSelectedSeats([]);
+                          }}
+                          className={`relative px-3 py-1.5 md:px-4 md:py-2 rounded-md text-xs md:text-sm font-semibold 
+                                    transition-all duration-300 ease-out whitespace-nowrap
+                                    ${isSelected
+                              ? 'text-white shadow-lg'
+                              : 'text-white/60 hover:text-white/80'
+                            }`}
+                        >
+                          {/* Animated background for selected route */}
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-500 rounded-md 
+                                          shadow-[0_0_20px_rgba(59,130,246,0.5)] animate-fade-in" />
+                          )}
+
+                          {/* Route text */}
+                          <span className="relative z-10 flex items-center gap-1">
+                            <span className="hidden sm:inline">{routeParts[0]}</span>
+                            <span className="sm:hidden">{routeParts[0].substring(0, 3)}</span>
+                            <span className="text-[10px] md:text-xs opacity-70">→</span>
+                            <span className="hidden sm:inline">{routeParts[1]}</span>
+                            <span className="sm:hidden">{routeParts[1].substring(0, 3)}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <select
-                  value={selectedRoute}
-                  onChange={(e) => {
-                    setSelectedRoute(e.target.value);
-                    setSelectedSeat(null);
-                  }}
-                  className="bg-transparent border-none focus:ring-0 text-white font-medium text-sm md:text-base cursor-pointer"
-                >
-                  {routes.map(route => (
-                    <option key={route} value={route} className="bg-slate-900">
-                      {route}
-                    </option>
-                  ))}
-                </select>
               </div>
 
-              {/* Date */}
-              <div className="flex items-center gap-2 bg-slate-800/50 p-2 rounded-lg border border-white/5">
-                <span className="font-semibold text-blue-300 hidden md:inline">Date:</span>
+              {/* Date - Enhanced Styling */}
+              <div className="flex items-center gap-2 bg-slate-800/50 p-2 md:p-2.5 rounded-xl border border-white/10 backdrop-blur-sm hover:border-white/20 transition-colors">
+                <span className="font-semibold text-blue-300 text-xs md:text-sm hidden md:inline">Date:</span>
                 <input
                   type="date"
                   value={selectedDate}
@@ -435,19 +462,21 @@ function App() {
                     setSelectedSeats([]);
                     setShowBookingForm(false);
                   }}
-                  className="bg-transparent border-none focus:ring-0 text-white font-medium text-sm md:text-base cursor-pointer"
+                  className="bg-transparent border-none focus:ring-0 text-white font-medium text-xs md:text-sm cursor-pointer 
+                           [color-scheme:dark] focus:outline-none"
                 />
               </div>
 
-              {/* Refresh */}
+              {/* Refresh - Enhanced Styling */}
               <button
                 onClick={fetchSeats}
-                className="p-2.5 bg-blue-600/20 hover:bg-blue-600/40 rounded-lg 
-                         border border-blue-500/30 transition-all duration-200 
-                         hover:scale-105 active:scale-95"
+                className="p-2 md:p-2.5 bg-gradient-to-br from-blue-600/20 to-blue-700/20 hover:from-blue-600/40 hover:to-blue-700/40 
+                         rounded-xl border border-blue-500/30 transition-all duration-200 
+                         hover:scale-105 active:scale-95 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]
+                         group"
                 title="Refresh"
               >
-                <FaSyncAlt className="text-blue-300" />
+                <FaSyncAlt className="text-blue-300 group-hover:rotate-180 transition-transform duration-500" />
               </button>
             </div>
           </div>
@@ -499,16 +528,25 @@ function App() {
               {/* Booking Form */}
               {showBookingForm && selectedSeats.length > 0 && (
                 <div className="mt-6">
-                  <BookingForm
-                    seat={selectedSeats[0].seat}
-                    selectedSeats={selectedSeats}
-                    selectedRoute={selectedRoute}
-                    onSubmit={selectedSeats[0].seat.isBooked ? handleUpdateBooking : handleBooking}
-                    onCancel={() => {
-                      setSelectedSeats([]);
-                      setShowBookingForm(false);
-                    }}
-                  />
+                  <Suspense fallback={
+                    <div className="glass-effect p-6 animate-pulse">
+                      <div className="h-8 bg-white/10 rounded mb-4"></div>
+                      <div className="h-12 bg-white/10 rounded mb-3"></div>
+                      <div className="h-12 bg-white/10 rounded mb-3"></div>
+                      <div className="h-12 bg-white/10 rounded"></div>
+                    </div>
+                  }>
+                    <BookingForm
+                      seat={selectedSeats[0].seat}
+                      selectedSeats={selectedSeats}
+                      selectedRoute={selectedRoute}
+                      onSubmit={selectedSeats[0].seat.isBooked ? handleUpdateBooking : handleBooking}
+                      onCancel={() => {
+                        setSelectedSeats([]);
+                        setShowBookingForm(false);
+                      }}
+                    />
+                  </Suspense>
                 </div>
               )}
 
@@ -534,7 +572,7 @@ function App() {
             {/* Right: Passenger List */}
             <div>
               <PassengerList
-                seats={seats.filter(s => s.isBooked)}
+                seats={bookedSeats}
                 onEdit={handleSeatClick}
                 onCancel={handleCancelBooking}
                 onTogglePickup={handleTogglePickup}
@@ -548,27 +586,31 @@ function App() {
 
         {/* Gender Popup */}
         {showGenderPopup && (
-          <GenderPopup
-            seat={currentSeat}
-            onSelect={handleGenderSelect}
-            onClose={handleGenderPopupClose}
-          />
+          <Suspense fallback={null}>
+            <GenderPopup
+              seat={currentSeat}
+              onSelect={handleGenderSelect}
+              onClose={handleGenderPopupClose}
+            />
+          </Suspense>
         )}
 
         {/* Confirm Dialog */}
         {showConfirmDialog && seatToCancel && (
-          <ConfirmDialog
-            isOpen={showConfirmDialog}
-            title="Cancel Booking"
-            message={`Are you sure you want to cancel the booking for ${seatToCancel.passengerName} (Seat #${seatToCancel.seatNumber})?`}
-            confirmText="Yes, Cancel"
-            cancelText="No, Keep It"
-            onConfirm={confirmCancelBooking}
-            onCancel={() => {
-              setShowConfirmDialog(false);
-              setSeatToCancel(null);
-            }}
-          />
+          <Suspense fallback={null}>
+            <ConfirmDialog
+              isOpen={showConfirmDialog}
+              title="Cancel Booking"
+              message={`Are you sure you want to cancel the booking for ${seatToCancel.passengerName} (Seat #${seatToCancel.seatNumber})?`}
+              confirmText="Yes, Cancel"
+              cancelText="No, Keep It"
+              onConfirm={confirmCancelBooking}
+              onCancel={() => {
+                setShowConfirmDialog(false);
+                setSeatToCancel(null);
+              }}
+            />
+          </Suspense>
         )}
 
         {/* Storage Permission Prompt */}

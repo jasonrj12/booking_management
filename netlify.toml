@@ -1,9 +1,8 @@
 # Netlify configuration
 [build]
-  base = "client"
-  command = "npm install && npm run build"
-  publish = "dist"
-  functions = "../netlify/functions"
+  command = "npm install && cd client && npm install && npm run build"
+  publish = "client/dist"
+  functions = "netlify/functions"
 
 # Environment variables will be set in Netlify dashboard
 [build.environment]

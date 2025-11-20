@@ -1,0 +1,9 @@
+{
+    "name": "netlify-functions",
+    "version": "1.0.0",
+    "description": "Serverless functions for bus reservation app",
+    "main": "index.js",
+    "dependencies": {
+        "firebase-admin": "^12.0.0"
+    }
+}

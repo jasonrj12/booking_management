@@ -39,3 +39,7 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Netlify
+.netlify/
+netlify/functions/node_modules/

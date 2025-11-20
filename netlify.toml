@@ -1,0 +1,29 @@
+# Netlify configuration
+[build]
+  base = "client"
+  command = "npm install && npm run build"
+  publish = "dist"
+  functions = "../netlify/functions"
+
+# Environment variables will be set in Netlify dashboard
+[build.environment]
+  NODE_VERSION = "18"
+
+# Redirects for SPA routing
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"

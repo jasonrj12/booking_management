@@ -10,12 +10,18 @@
 [build.environment]
   NODE_VERSION = "20.19.0"
 
-# Redirects for SPA routing
+# Redirects for API endpoints
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/api/seats/*"
+  to = "/.netlify/functions/seats/:splat"
   status = 200
 
+[[redirects]]
+  from = "/api/seats"
+  to = "/.netlify/functions/seats"
+  status = 200
+
+# Redirects for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"

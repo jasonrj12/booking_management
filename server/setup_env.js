@@ -1,0 +1,11 @@
+const fs = require('fs');
+const path = require('path');
+
+const envContent = `FIREBASE_PROJECT_ID=bus-reservation-52ec0
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCzj0IQww3RVjmd\\nDH8+SP7dzAA5ktKSgCMIPcQl5aTEG1twXa+giOF8mUqGrJzDzzjeGJ5h61TwXqlS\\nUaCgDMPnUYA/Krkov8b2ceyOsPrCzWYW6vdEwbZ3zMUqiMl0bASEX0uM9RqA56F7\\nozwyQcbID4BpuvO13PF+Td6nk6/aFiRWOwqzIwU0hgF8/Ie5eNZBctbUhFSpJLA/\\na8nhrURlzVzTKUILxyjjZ7EStmrbfUA8HqmNZm9/3n5gmxgHd3ftIX3JBoRlB8sZ\\nqfUvXJOmqvKOSjqlmV/LFCReCLZwQHTkSo897p1Y5Qa43/iKxkXO49s4k8BkJnIN\\nGbRnWavPAgMBAAECggEADwtaurLNDpQN4bWxV5OgHw8/mZNOp02rIb6jF5XFF1U/\\ndQu0clvloJ3rW5tMyy8qkZk4c/XWuQkFYMtMDPzk0RXIDALVXq+qyO1Ep7P2Xqn8\\n+sCXFSCx3BnBD05Eqsd+HWUqnFXQ8an2orhLi95s/EgoNzOdxcgMR8vYcuvx2PDM\\nDs1yi0CyirGIj8mQWre2D4JjRFQj8RPzMeLj+s74o87+yFLs0yOQOiNQ0IhCDpaf\\n+xPdz/ayhV1hmHI2yoGhdIbgx7vaLX6hfiAlJ/DmQrJFRd1rueonqGlq8xozajdE\\nL1V5UMsKHz7U4BqN+qdOFhFs9vcc3iZ8lXsLMfhM0QKBgQDYXRqBh3j/5U1hTOLi\\nEgUBO3jQkm1zPDeCSg+mGNIhf++xvk5pdBi8tgj3FnDxLwxYn5gj0vwTKRio6que\\nmY0gA5LbEFoXn82jdw3pquzUohYor4KC0wY6uCy5TXgVq+nQOkiLX311NzL2rxVL\\n2xUglJykemuOJk9Ax+rqcGDxdwKBgQDUdCNpA/pQHn96mIbr/kJUhgaTfRfwtQ4s\\nzO9UtHAeVtjukyqzwiK6DKmyTMikMyVlyKMDbab+NO4R+9eL26SxO3S/CfPOkRD9\\nCMZRWkmxhDTviMb9vVIgnkyp7uWkVl9jsSgrBMuPbp+kNIYXEUIO1PH83fMOJOGl\\n61wqwDbuaQKBgQCZeonn4kqh823NnLXAuhmUwzQzd/tt6ARURucM4sSEgPVt91o2\\nEeXOT67SX7fkToSKhUNt/idUDC3y/Oyax7/FOuO8w7+0zGYaE8TpwZbYStY/LCj/\\nVmQv2R/YnqyVauqkDAQT4bvkHzDmrlIECjfVcbYgMrsDDgfgIzBv9yG9hwKBgQCL\\nV8EB18INWnNyDSgxEIqgtWcKxTk2fwnVCHTQsaf3vi56C7wuOl5ceIG0l/fg+krE\\n/1srnHeyszSSRwOQj3btZ3mi8vwdt7fUvjSUlwtOis/Na4BYXBvJmQnfSvkDWEMo\\nN8GItZRtdrjuEiUAbClPYQt2Nnx8AmSdVkkVIQzmQQKBgGtY7QR9urkXC49/dk74\\nKEG9RaT9FYkjA332uMtwN+6NhMxrMogbD7lTO1gBV9qiLHCjurvLHP473LtvoE+/\\nTUAQJcLP3iBNfM18YwtA2diq9Jg0LOxBHwFhkJ3nf+QXqNtEBP8uO1JNtW8XYuVv\\n5ESGONToRrPDmnmncHFeyaSW\\n-----END PRIVATE KEY-----\\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@bus-reservation-52ec0.iam.gserviceaccount.com
+PORT=5000
+`;
+
+fs.writeFileSync(path.join(__dirname, '.env'), envContent);
+console.log('.env file created successfully');

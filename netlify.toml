@@ -7,7 +7,7 @@
 
 # Environment variables will be set in Netlify dashboard
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20.19.0"
 
 # Redirects for SPA routing
 [[redirects]]

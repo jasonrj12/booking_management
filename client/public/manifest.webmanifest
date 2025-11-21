@@ -1,6 +1,6 @@
 {
   "name": "Bus Seat Reservation",
-  "short_name": "Bus Seats",
+  "short_name": "BusPal",
   "description": "Manage bus seat bookings, passengers, and pickups on the go.",
   "start_url": "/",
   "display": "standalone",

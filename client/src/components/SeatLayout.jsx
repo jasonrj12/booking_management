@@ -2,7 +2,7 @@ import React, { memo, useMemo } from 'react';
 import SeatCard from './SeatCard';
 import { MdAirlineSeatReclineNormal } from 'react-icons/md';
 
-const SeatLayout = memo(({ seats, onSeatClick }) => {
+const SeatLayout = memo(({ seats, onSeatClick, selectedSeats = [] }) => {
     // Memoize seat separation and row calculations
     const { standardRows, backRowSeats } = useMemo(() => {
         // Separate standard seats (1-46) and back row seats (47-51)
@@ -100,7 +100,12 @@ const SeatLayout = memo(({ seats, onSeatClick }) => {
                                 {/* Right seats (seats 45-46) */}
                                 <div className="flex gap-1.5 md:gap-2">
                                     {row.map((seat) => (
-                                        <SeatCard key={seat._id} seat={seat} onClick={onSeatClick} />
+                                        <SeatCard
+                                            key={seat._id}
+                                            seat={seat}
+                                            onClick={onSeatClick}
+                                            isSelected={selectedSeats.some(({ seat: s }) => s._id === seat._id)}
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -113,7 +118,12 @@ const SeatLayout = memo(({ seats, onSeatClick }) => {
                             {/* Left seats (2 seats) */}
                             <div className="flex gap-1.5 md:gap-2">
                                 {row.slice(0, 2).map((seat) => (
-                                    <SeatCard key={seat._id} seat={seat} onClick={onSeatClick} />
+                                    <SeatCard
+                                        key={seat._id}
+                                        seat={seat}
+                                        onClick={onSeatClick}
+                                        isSelected={selectedSeats.some(({ seat: s }) => s._id === seat._id)}
+                                    />
                                 ))}
                             </div>
 
@@ -125,7 +135,12 @@ const SeatLayout = memo(({ seats, onSeatClick }) => {
                             {/* Right seats (2 seats) */}
                             <div className="flex gap-1.5 md:gap-2">
                                 {row.slice(2, 4).map((seat) => (
-                                    <SeatCard key={seat._id} seat={seat} onClick={onSeatClick} />
+                                    <SeatCard
+                                        key={seat._id}
+                                        seat={seat}
+                                        onClick={onSeatClick}
+                                        isSelected={selectedSeats.some(({ seat: s }) => s._id === seat._id)}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -137,7 +152,12 @@ const SeatLayout = memo(({ seats, onSeatClick }) => {
                     <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10">
                         <div className="flex gap-1.5 md:gap-2 justify-center items-center">
                             {backRowSeats.map((seat) => (
-                                <SeatCard key={seat._id} seat={seat} onClick={onSeatClick} />
+                                <SeatCard
+                                    key={seat._id}
+                                    seat={seat}
+                                    onClick={onSeatClick}
+                                    isSelected={selectedSeats.some(({ seat: s }) => s._id === seat._id)}
+                                />
                             ))}
                         </div>
                     </div>

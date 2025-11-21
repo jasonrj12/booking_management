@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUser, FaPhone, FaTimes, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaUser, FaPhone, FaTimes, FaMapMarkerAlt, FaPlus, FaVenusMars } from 'react-icons/fa';
 
 const mannarToColomboBoardingPoints = [
     "Mannar Bus Stand",
@@ -52,7 +52,7 @@ const colomboToMannarBoardingPoints = [
     "Puttalam"
 ];
 
-const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCancel }) => {
+const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCancel, onAddAnotherSeat, onUpdateGender }) => {
     const [formData, setFormData] = useState({
         passengerName: '',
         passengerPhone: '',
@@ -196,30 +196,64 @@ const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCanc
                         </div>
                     )}
 
-                    {/* Selected Seats Display */}
-                    {selectedSeats.length > 0 && (
+
+                    {/* Gender Selection for Each Seat */}
+                    {!seat.isBooked && selectedSeats.length > 0 && (
                         <div>
-                            <label className="block text-sm font-medium mb-1 md:mb-2 text-blue-200">
-                                Selected Seats ({selectedSeats.length})
+                            <label className="block text-sm font-medium mb-2 text-blue-200">
+                                <FaVenusMars className="inline mr-2" />
+                                Gender Selection
                             </label>
-                            <div className="glass-card p-3 md:p-4">
-                                <div className="flex flex-wrap gap-2">
-                                    {selectedSeats.map(({ seat, gender }) => (
-                                        <div
-                                            key={seat._id}
-                                            className={`px-2 py-1 md:px-3 md:py-2 rounded-lg border-2 text-sm md:text-base ${gender === 'male'
-                                                ? 'bg-blue-600/40 border-blue-500'
-                                                : 'bg-pink-600/40 border-pink-500'
-                                                }`}
-                                        >
-                                            <span className="font-bold">#{seat.seatNumber}</span>
-                                            <span className="text-xs ml-1 md:ml-2 capitalize">({gender})</span>
+                            <div className="space-y-2">
+                                {selectedSeats.map(({ seat: selectedSeat, gender }) => (
+                                    <div key={selectedSeat._id} className="glass-card p-3 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-blue-600/30 px-3 py-1 rounded-lg border border-blue-500/50 font-bold">
+                                                #{selectedSeat.seatNumber}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onUpdateGender(selectedSeat, 'male')}
+                                                    className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${gender === 'male'
+                                                            ? 'bg-blue-600/60 border-blue-400 text-white shadow-lg'
+                                                            : 'bg-blue-600/20 border-blue-600/40 text-blue-200 hover:bg-blue-600/40'
+                                                        }`}
+                                                >
+                                                    Male
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onUpdateGender(selectedSeat, 'female')}
+                                                    className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${gender === 'female'
+                                                            ? 'bg-pink-600/60 border-pink-400 text-white shadow-lg'
+                                                            : 'bg-pink-600/20 border-pink-600/40 text-pink-200 hover:bg-pink-600/40'
+                                                        }`}
+                                                >
+                                                    Female
+                                                </button>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
+
+                    {/* Add Another Seat Button */}
+                    {!seat.isBooked && onAddAnotherSeat && (
+                        <div>
+                            <button
+                                type="button"
+                                onClick={onAddAnotherSeat}
+                                className="w-full glass-card p-3 border-2 border-dashed border-blue-500/40 hover:border-blue-500/60 hover:bg-blue-600/10 transition-all flex items-center justify-center gap-2 text-blue-300 font-medium"
+                            >
+                                <FaPlus className="text-sm" />
+                                Add Another Seat
+                            </button>
+                        </div>
+                    )}
+
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-2">

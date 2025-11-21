@@ -8,14 +8,11 @@ import './index.css';
 
 // Lazy load modal components to reduce initial bundle size
 const BookingForm = lazy(() => import('./components/BookingForm'));
-const GenderPopup = lazy(() => import('./components/GenderPopup'));
 const ConfirmDialog = lazy(() => import('./components/ConfirmDialog'));
 
 function App() {
   const [seats, setSeats] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]); // Array of {seat, gender}
-  const [showGenderPopup, setShowGenderPopup] = useState(false);
-  const [currentSeat, setCurrentSeat] = useState(null); // Seat for gender popup
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState('Mannar to Colombo');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
@@ -119,27 +116,26 @@ function App() {
       return;
     }
 
-    // If available and not selected yet, show gender popup
-    setCurrentSeat(seat);
-    setShowGenderPopup(true);
+    // Add seat with default gender 'male' and show form
+    setSelectedSeats(prev => {
+      const newSelection = [...prev, { seat, gender: 'male' }];
+      return newSelection;
+    });
+    // Always show the form when a seat is selected
+    setShowBookingForm(true);
   }, [selectedSeats]);
 
-  const handleGenderSelect = useCallback((seat, gender) => {
-    // Add seat with gender to selection (prevent duplicates)
-    setSelectedSeats(prev => {
-      const alreadySelected = prev.some(({ seat: selectedSeat }) => selectedSeat._id === seat._id);
-      if (alreadySelected) {
-        return prev;
-      }
-      return [...prev, { seat, gender }];
-    });
-    setShowGenderPopup(false);
-    setCurrentSeat(null);
+  const handleUpdateGender = useCallback((seat, gender) => {
+    setSelectedSeats(prev =>
+      prev.map(item =>
+        item.seat._id === seat._id ? { ...item, gender } : item
+      )
+    );
   }, []);
 
-  const handleGenderPopupClose = useCallback(() => {
-    setShowGenderPopup(false);
-    setCurrentSeat(null);
+  const handleAddAnotherSeat = useCallback(() => {
+    // Close the form to allow selecting another seat
+    setShowBookingForm(false);
   }, []);
 
   const handleBooking = useCallback(async (formData) => {
@@ -184,8 +180,10 @@ function App() {
     }
   }, [selectedSeats, fetchSeats]);
 
-  const handleCancelBooking = useCallback(async (seat) => {
-    setSeatToCancel(seat);
+  const handleCancelBooking = useCallback(async (seatOrPassenger) => {
+    // Check if it's a passenger object (with seats array) or a single seat
+    const isPassengerGroup = seatOrPassenger.seats && Array.isArray(seatOrPassenger.seats);
+    setSeatToCancel(seatOrPassenger);
     setShowConfirmDialog(true);
   }, []);
 
@@ -359,14 +357,23 @@ function App() {
     if (!seatToCancel) return;
 
     try {
-      const response = await axios.delete(`/api/seats/${seatToCancel._id}/cancel`);
+      // Check if it's a passenger group or single seat
+      const isPassengerGroup = seatToCancel.seats && Array.isArray(seatToCancel.seats);
 
-      if (response.data.success) {
-        await fetchSeats();
-        setShowConfirmDialog(false);
-        setSeatToCancel(null);
-        // Booking cancelled successfully - no alert needed
+      if (isPassengerGroup) {
+        // Cancel all seats in the group
+        for (const seat of seatToCancel.seats) {
+          await axios.delete(`/api/seats/${seat._id}/cancel`);
+        }
+      } else {
+        // Cancel single seat
+        await axios.delete(`/api/seats/${seatToCancel._id}/cancel`);
       }
+
+      await fetchSeats();
+      setShowConfirmDialog(false);
+      setSeatToCancel(null);
+      // Booking(s) cancelled successfully - no alert needed
     } catch (error) {
       console.error('Error cancelling booking:', error);
       alert(error.response?.data?.message || 'Error cancelling booking');
@@ -518,7 +525,11 @@ function App() {
             {/* Left: Seat Layout */}
             <div className="lg:col-span-2">
               {seats.length > 0 ? (
-                <SeatLayout seats={seats} onSeatClick={handleSeatClick} />
+                <SeatLayout
+                  seats={seats}
+                  onSeatClick={handleSeatClick}
+                  selectedSeats={selectedSeats}
+                />
               ) : (
                 <div className="glass-effect p-12 text-center">
                   <p className="text-white/50 text-lg">No seats available for this route</p>
@@ -545,28 +556,13 @@ function App() {
                         setSelectedSeats([]);
                         setShowBookingForm(false);
                       }}
+                      onUpdateGender={handleUpdateGender}
+                      onAddAnotherSeat={handleAddAnotherSeat}
                     />
                   </Suspense>
                 </div>
               )}
 
-              {/* Book Selected Seats Button */}
-              {selectedSeats.length > 0 && !showBookingForm && (
-                <div className="mt-6">
-                  <button
-                    onClick={() => setShowBookingForm(true)}
-                    className="w-full btn-primary py-4 text-lg"
-                  >
-                    Book {selectedSeats.length} Selected Seat{selectedSeats.length > 1 ? 's' : ''}
-                  </button>
-                  <button
-                    onClick={() => setSelectedSeats([])}
-                    className="w-full btn-secondary py-2 text-sm mt-2"
-                  >
-                    Clear Selection
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Right: Passenger List */}
@@ -584,16 +580,7 @@ function App() {
           </div>
         )}
 
-        {/* Gender Popup */}
-        {showGenderPopup && (
-          <Suspense fallback={null}>
-            <GenderPopup
-              seat={currentSeat}
-              onSelect={handleGenderSelect}
-              onClose={handleGenderPopupClose}
-            />
-          </Suspense>
-        )}
+
 
         {/* Confirm Dialog */}
         {showConfirmDialog && seatToCancel && (
@@ -601,7 +588,11 @@ function App() {
             <ConfirmDialog
               isOpen={showConfirmDialog}
               title="Cancel Booking"
-              message={`Are you sure you want to cancel the booking for ${seatToCancel.passengerName} (Seat #${seatToCancel.seatNumber})?`}
+              message={
+                seatToCancel.seats && Array.isArray(seatToCancel.seats)
+                  ? `Are you sure you want to cancel ${seatToCancel.seats.length} bookings for ${seatToCancel.passengerName || 'Guest'} (Seats: ${seatToCancel.seats.map(s => `#${s.seatNumber}`).join(', ')})?`
+                  : `Are you sure you want to cancel the booking for ${seatToCancel.passengerName || 'Guest'} (Seat #${seatToCancel.seatNumber})?`
+              }
               confirmText="Yes, Cancel"
               cancelText="No, Keep It"
               onConfirm={confirmCancelBooking}

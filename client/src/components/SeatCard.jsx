@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
-import { FaUserAlt } from 'react-icons/fa';
+import { FaUserAlt, FaCheckCircle } from 'react-icons/fa';
 
-const SeatCard = memo(({ seat, onClick }) => {
+const SeatCard = memo(({ seat, onClick, isSelected }) => {
     const isBooked = seat.isBooked;
     const isMale = isBooked && seat.gender === 'male';
     const isFemale = isBooked && seat.gender === 'female';
@@ -19,7 +19,8 @@ const SeatCard = memo(({ seat, onClick }) => {
     return (
         <div
             onClick={() => onClick(seat)}
-            className={`seat-card ${seatClass} group relative`}
+            className={`seat-card ${seatClass} group relative ${isSelected ? 'ring-4 ring-yellow-400 ring-offset-2 ring-offset-slate-900 animate-pulse-slow' : ''
+                }`}
             title={isBooked ? `${seat.passengerName} - ${seat.passengerPhone}` : 'Available'}
         >
             <div className="flex flex-col items-center justify-center gap-1">
@@ -28,6 +29,13 @@ const SeatCard = memo(({ seat, onClick }) => {
                     <FaUserAlt className="text-xs text-green-300" />
                 )}
             </div>
+
+            {/* Selection Indicator */}
+            {isSelected && (
+                <div className="absolute -top-2 -right-2 bg-yellow-400 rounded-full p-1 shadow-lg">
+                    <FaCheckCircle className="text-slate-900 text-sm" />
+                </div>
+            )}
 
             {/* Hover Tooltip */}
             {isBooked && (
@@ -54,7 +62,8 @@ const SeatCard = memo(({ seat, onClick }) => {
     return prevProps.seat._id === nextProps.seat._id &&
         prevProps.seat.isBooked === nextProps.seat.isBooked &&
         prevProps.seat.passengerName === nextProps.seat.passengerName &&
-        prevProps.seat.gender === nextProps.seat.gender;
+        prevProps.seat.gender === nextProps.seat.gender &&
+        prevProps.isSelected === nextProps.isSelected;
 });
 
 SeatCard.displayName = 'SeatCard';

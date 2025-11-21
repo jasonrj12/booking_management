@@ -405,30 +405,33 @@ function App() {
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="glass-effect p-6 mb-8 animate-fade-in">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="bg-blue-600/30 p-4 rounded-xl border border-blue-500/50">
-                <FaBus className="text-4xl text-blue-400" />
+        {/* Header */}
+        <div className="glass-effect p-4 md:p-6 mb-6 md:mb-8 animate-fade-in">
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 md:gap-6">
+            {/* Title Section */}
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="bg-blue-600/30 p-3 md:p-4 rounded-xl border border-blue-500/50 shrink-0">
+                <FaBus className="text-2xl md:text-4xl text-blue-400" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold text-shadow bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl md:text-4xl font-bold text-shadow bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
                   Bus Seat Reservation
                 </h1>
-                <p className="text-white/70 mt-1">Conductor Management System</p>
+                <p className="text-xs md:text-base text-white/70 mt-0.5 md:mt-1">Conductor Management System</p>
               </div>
             </div>
 
-            {/* Route Selector & Controls */}
-            <div className="flex flex-wrap items-center gap-3 md:gap-4">
-              {/* Route - Modern Segmented Control */}
-              <div className="relative">
-                <div className="flex items-center gap-2 bg-slate-800/50 p-1.5 rounded-xl border border-white/10 backdrop-blur-sm">
-                  <div className="flex items-center gap-2 text-blue-300 px-2">
+            {/* Controls Section */}
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4 w-full xl:w-auto">
+
+              {/* Route Selector */}
+              <div className="relative w-full md:w-auto">
+                <div className="flex items-center gap-2 bg-slate-800/50 p-1.5 rounded-xl border border-white/10 backdrop-blur-sm w-full md:w-auto">
+                  <div className="flex items-center gap-2 text-blue-300 px-2 shrink-0">
                     <FaRoute className="text-lg" />
                     <span className="font-semibold text-xs md:text-sm hidden sm:inline">Route:</span>
                   </div>
-                  <div className="relative flex bg-slate-900/50 rounded-lg p-1">
+                  <div className="relative flex bg-slate-900/50 rounded-lg p-1 flex-1 md:flex-none">
                     {routes.map((route, index) => {
                       const isSelected = selectedRoute === route;
                       const routeParts = route.split(' to ');
@@ -440,7 +443,7 @@ function App() {
                             setSelectedSeats([]);
                           }}
                           className={`relative px-3 py-1.5 md:px-4 md:py-2 rounded-md text-xs md:text-sm font-semibold 
-                                    transition-all duration-300 ease-out whitespace-nowrap
+                                    transition-all duration-300 ease-out whitespace-nowrap flex-1 md:flex-none text-center
                                     ${isSelected
                               ? 'text-white shadow-lg'
                               : 'text-white/60 hover:text-white/80'
@@ -453,7 +456,7 @@ function App() {
                           )}
 
                           {/* Route text */}
-                          <span className="relative z-10 flex items-center gap-1">
+                          <span className="relative z-10 flex items-center justify-center gap-1">
                             <span className="hidden sm:inline">{routeParts[0]}</span>
                             <span className="sm:hidden">{routeParts[0].substring(0, 3)}</span>
                             <span className="text-[10px] md:text-xs opacity-70">→</span>
@@ -467,10 +470,10 @@ function App() {
                 </div>
               </div>
 
-              {/* Date Selection Group */}
-              <div className="flex flex-col sm:flex-row items-center gap-2">
+              {/* Date & Refresh Controls */}
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                 {/* Quick Select Buttons */}
-                <div className="flex bg-slate-800/50 p-1 rounded-xl border border-white/10 backdrop-blur-sm">
+                <div className="flex bg-slate-800/50 p-1 rounded-xl border border-white/10 backdrop-blur-sm overflow-x-auto no-scrollbar">
                   {['Yesterday', 'Today', 'Tomorrow'].map((label, idx) => {
                     const offset = idx - 1; // -1, 0, 1
                     const dateStr = getLocalDate(offset);
@@ -484,7 +487,7 @@ function App() {
                           setSelectedSeats([]);
                           setShowBookingForm(false);
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all duration-200
+                        className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap
                                       ${isActive
                             ? 'bg-blue-600 text-white shadow-lg'
                             : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -510,19 +513,19 @@ function App() {
                            [color-scheme:dark] focus:outline-none"
                   />
                 </div>
-              </div>
 
-              {/* Refresh - Enhanced Styling */}
-              <button
-                onClick={fetchSeats}
-                className="p-2 md:p-2.5 bg-gradient-to-br from-blue-600/20 to-blue-700/20 hover:from-blue-600/40 hover:to-blue-700/40 
-                         rounded-xl border border-blue-500/30 transition-all duration-200 
-                         hover:scale-105 active:scale-95 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]
-                         group"
-                title="Refresh"
-              >
-                <FaSyncAlt className="text-blue-300 group-hover:rotate-180 transition-transform duration-500" />
-              </button>
+                {/* Refresh - Enhanced Styling */}
+                <button
+                  onClick={fetchSeats}
+                  className="p-2 md:p-2.5 bg-gradient-to-br from-blue-600/20 to-blue-700/20 hover:from-blue-600/40 hover:to-blue-700/40 
+                           rounded-xl border border-blue-500/30 transition-all duration-200 
+                           hover:scale-105 active:scale-95 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)]
+                           group ml-auto md:ml-0"
+                  title="Refresh"
+                >
+                  <FaSyncAlt className="text-blue-300 group-hover:rotate-180 transition-transform duration-500" />
+                </button>
+              </div>
             </div>
           </div>
 

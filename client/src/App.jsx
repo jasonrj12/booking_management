@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import axios from 'axios';
 import SeatLayout from './components/SeatLayout';
-import PassengerList from './components/PassengerList';
 import { FaBus, FaRoute, FaSyncAlt } from 'react-icons/fa';
 import { jsPDF } from 'jspdf';
 import './index.css';
 
 // Lazy load modal components to reduce initial bundle size
 const BookingForm = lazy(() => import('./components/BookingForm'));
+const BookingDetails = lazy(() => import('./components/BookingDetails'));
 const ConfirmDialog = lazy(() => import('./components/ConfirmDialog'));
 
 function App() {
@@ -24,6 +24,7 @@ function App() {
   const [seats, setSeats] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]); // Array of {seat, gender}
   const [showBookingForm, setShowBookingForm] = useState(false);
+  const [showBookingDetails, setShowBookingDetails] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState('Mannar to Colombo');
   const [selectedDate, setSelectedDate] = useState(getLocalDate(0)); // YYYY-MM-DD (Local)
   const [loading, setLoading] = useState(false);
@@ -111,9 +112,9 @@ function App() {
 
   const handleSeatClick = useCallback((seat) => {
     if (seat.isBooked) {
-      // If booked, show edit form
+      // If booked, show details view
       setSelectedSeats([{ seat, gender: seat.gender }]);
-      setShowBookingForm(true);
+      setShowBookingDetails(true);
       return;
     }
 
@@ -133,6 +134,12 @@ function App() {
     // Always show the form when a seat is selected
     setShowBookingForm(true);
   }, [selectedSeats]);
+
+  const handleEditBooking = useCallback((seat) => {
+    // Show edit form for booking updates (from PassengerList)
+    setSelectedSeats([{ seat, gender: seat.gender }]);
+    setShowBookingForm(true);
+  }, []);
 
   const handleUpdateGender = useCallback((seat, gender) => {
     setSelectedSeats(prev =>
@@ -563,9 +570,9 @@ function App() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left: Seat Layout */}
-            <div className="lg:col-span-2">
+          <div className="flex justify-center">
+            {/* Seat Layout */}
+            <div className="w-full max-w-3xl">
               {seats.length > 0 ? (
                 <SeatLayout
                   seats={seats}
@@ -605,19 +612,28 @@ function App() {
                 </div>
               )}
 
-            </div>
+              {/* Booking Details View */}
+              {showBookingDetails && selectedSeats.length > 0 && (
+                <Suspense fallback={null}>
+                  <BookingDetails
+                    seat={seats.find(s => s._id === selectedSeats[0].seat._id) || selectedSeats[0].seat}
+                    onClose={() => {
+                      setSelectedSeats([]);
+                      setShowBookingDetails(false);
+                    }}
+                    onTogglePickup={handleTogglePickup}
+                    onCancel={(seat) => {
+                      setShowBookingDetails(false);
+                      handleCancelBooking(seat);
+                    }}
+                    onEdit={(seat) => {
+                      setShowBookingDetails(false);
+                      handleEditBooking(seat);
+                    }}
+                  />
+                </Suspense>
+              )}
 
-            {/* Right: Passenger List */}
-            <div>
-              <PassengerList
-                seats={bookedSeats}
-                onEdit={handleSeatClick}
-                onCancel={handleCancelBooking}
-                onTogglePickup={handleTogglePickup}
-                onDownloadCsv={isMobile ? handleDownloadPassengersCSV : undefined}
-                onDownloadPdf={isMobile ? handleDownloadPassengersPDF : undefined}
-                isMobile={isMobile}
-              />
             </div>
           </div>
         )}

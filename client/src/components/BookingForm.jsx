@@ -61,6 +61,14 @@ const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCanc
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
+    // Disable background scroll when modal is open
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
+
     // Pre-fill form if editing existing booking
     useEffect(() => {
         if (seat && seat.isBooked) {
@@ -134,105 +142,116 @@ const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCanc
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+                    {/* Compact Selected Seat Display */}
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center mb-4">
+                        <p className="text-blue-200 text-sm">
+                            Selected Seat{selectedSeats.length > 1 ? 's' : ''}: <span className="text-white font-bold text-lg ml-1">{selectedSeats.map(s => s.seat.seatNumber).join(', ')}</span>
+                        </p>
+                    </div>
+
                     {/* Passenger Name */}
                     <div>
-                        <label className="block text-sm font-medium mb-1 md:mb-2 text-blue-200">
-                            <FaUser className="inline mr-2" />
-                            Passenger Name <span className="text-white/50 text-xs">(Optional)</span>
+                        <label className="block text-xs font-medium mb-1 text-blue-200 uppercase tracking-wide">
+                            Passenger Name <span className="text-white/40 normal-case">(Optional)</span>
                         </label>
-                        <input
-                            type="text"
-                            name="passengerName"
-                            value={formData.passengerName}
-                            onChange={handleChange}
-                            className={`input-field ${errors.passengerName ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-                            placeholder="Enter passenger name"
-                        />
+                        <div className="relative">
+                            <FaUser className="absolute left-3 top-3 text-blue-400/50 text-sm" />
+                            <input
+                                type="text"
+                                name="passengerName"
+                                value={formData.passengerName}
+                                onChange={handleChange}
+                                className={`w-full bg-slate-900/50 border border-blue-500/20 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white placeholder-blue-400/30 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all ${errors.passengerName ? 'border-red-500/50' : ''}`}
+                                placeholder="Enter name"
+                            />
+                        </div>
                         {errors.passengerName && (
-                            <p className="text-red-400 text-sm mt-1">{errors.passengerName}</p>
+                            <p className="text-red-400 text-xs mt-1">{errors.passengerName}</p>
                         )}
                     </div>
 
                     {/* Phone Number */}
                     <div>
-                        <label className="block text-sm font-medium mb-1 md:mb-2 text-blue-200">
-                            <FaPhone className="inline mr-2" />
+                        <label className="block text-xs font-medium mb-1 text-blue-200 uppercase tracking-wide">
                             Phone Number
                         </label>
-                        <input
-                            type="tel"
-                            name="passengerPhone"
-                            value={formData.passengerPhone}
-                            onChange={handleChange}
-                            className={`input-field ${errors.passengerPhone ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-                            placeholder="Enter 10-digit phone number"
-                            maxLength={10}
-                        />
+                        <div className="relative">
+                            <FaPhone className="absolute left-3 top-3 text-blue-400/50 text-sm" />
+                            <input
+                                type="tel"
+                                name="passengerPhone"
+                                value={formData.passengerPhone}
+                                onChange={handleChange}
+                                className={`w-full bg-slate-900/50 border border-blue-500/20 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white placeholder-blue-400/30 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all ${errors.passengerPhone ? 'border-red-500/50' : ''}`}
+                                placeholder="07XXXXXXXX"
+                                maxLength={10}
+                            />
+                        </div>
                         {errors.passengerPhone && (
-                            <p className="text-red-400 text-sm mt-1">{errors.passengerPhone}</p>
+                            <p className="text-red-400 text-xs mt-1">{errors.passengerPhone}</p>
                         )}
                     </div>
 
                     {/* Boarding Point */}
                     {(selectedRoute === 'Mannar to Colombo' || selectedRoute === 'Colombo to Mannar') && (
                         <div>
-                            <label className="block text-sm font-medium mb-1 md:mb-2 text-blue-200">
-                                <FaMapMarkerAlt className="inline mr-2" />
+                            <label className="block text-xs font-medium mb-1 text-blue-200 uppercase tracking-wide">
                                 Boarding Point
                             </label>
-                            <select
-                                name="boardingPoint"
-                                value={formData.boardingPoint}
-                                onChange={handleChange}
-                                className="input-field appearance-none cursor-pointer"
-                            >
-                                <option value="">Select Boarding Point</option>
-                                {(selectedRoute === 'Mannar to Colombo' ? mannarToColomboBoardingPoints : colomboToMannarBoardingPoints).map((point, index) => (
-                                    <option key={index} value={point} className="bg-slate-900 text-white">
-                                        {point}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative">
+                                <FaMapMarkerAlt className="absolute left-3 top-3 text-blue-400/50 text-sm" />
+                                <select
+                                    name="boardingPoint"
+                                    value={formData.boardingPoint}
+                                    onChange={handleChange}
+                                    className="w-full bg-slate-900/50 border border-blue-500/20 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white appearance-none cursor-pointer focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
+                                >
+                                    <option value="">Select Point</option>
+                                    {(selectedRoute === 'Mannar to Colombo' ? mannarToColomboBoardingPoints : colomboToMannarBoardingPoints).map((point, index) => (
+                                        <option key={index} value={point} className="bg-slate-900 text-white">
+                                            {point}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     )}
 
-
-                    {/* Gender Selection for Each Seat */}
+                    {/* Compact Gender Selection */}
                     {!seat.isBooked && selectedSeats.length > 0 && (
-                        <div>
-                            <label className="block text-sm font-medium mb-2 text-blue-200">
-                                <FaVenusMars className="inline mr-2" />
-                                Gender Selection
+                        <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                            <label className="block text-xs font-medium mb-2 text-blue-200 uppercase tracking-wide flex items-center gap-2">
+                                <FaVenusMars /> Gender Selection
                             </label>
                             <div className="space-y-2">
                                 {selectedSeats.map(({ seat: selectedSeat, gender }) => (
-                                    <div key={selectedSeat._id} className="glass-card p-3 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-blue-600/30 px-3 py-1 rounded-lg border border-blue-500/50 font-bold">
-                                                #{selectedSeat.seatNumber}
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onUpdateGender(selectedSeat, 'male')}
-                                                    className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${gender === 'male'
-                                                            ? 'bg-blue-600/60 border-blue-400 text-white shadow-lg'
-                                                            : 'bg-blue-600/20 border-blue-600/40 text-blue-200 hover:bg-blue-600/40'
-                                                        }`}
-                                                >
-                                                    Male
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onUpdateGender(selectedSeat, 'female')}
-                                                    className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium ${gender === 'female'
-                                                            ? 'bg-pink-600/60 border-pink-400 text-white shadow-lg'
-                                                            : 'bg-pink-600/20 border-pink-600/40 text-pink-200 hover:bg-pink-600/40'
-                                                        }`}
-                                                >
-                                                    Female
-                                                </button>
-                                            </div>
+                                    <div key={selectedSeat._id} className="flex items-center justify-between gap-3">
+                                        {selectedSeats.length > 1 && (
+                                            <span className="text-blue-300 text-sm font-medium min-w-[60px]">
+                                                Seat {selectedSeat.seatNumber}
+                                            </span>
+                                        )}
+                                        <div className="flex gap-2 flex-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => onUpdateGender(selectedSeat, 'male')}
+                                                className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-all border ${gender === 'male'
+                                                    ? 'bg-blue-600 border-blue-500 text-white shadow-sm'
+                                                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                                                    }`}
+                                            >
+                                                Male
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => onUpdateGender(selectedSeat, 'female')}
+                                                className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-all border ${gender === 'female'
+                                                    ? 'bg-pink-600 border-pink-500 text-white shadow-sm'
+                                                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                                                    }`}
+                                            >
+                                                Female
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -253,7 +272,6 @@ const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCanc
                             </button>
                         </div>
                     )}
-
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-2">

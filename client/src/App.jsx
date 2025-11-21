@@ -11,11 +11,21 @@ const BookingForm = lazy(() => import('./components/BookingForm'));
 const ConfirmDialog = lazy(() => import('./components/ConfirmDialog'));
 
 function App() {
+  // Helper to get local date string (YYYY-MM-DD)
+  const getLocalDate = (offset = 0) => {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [seats, setSeats] = useState([]);
   const [selectedSeats, setSelectedSeats] = useState([]); // Array of {seat, gender}
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState('Mannar to Colombo');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+  const [selectedDate, setSelectedDate] = useState(getLocalDate(0)); // YYYY-MM-DD (Local)
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -61,27 +71,6 @@ function App() {
   }, [storageAllowed, storageKey]);
 
   // Initialize seats on first load
-  useEffect(() => {
-    const initializeSeats = async () => {
-      try {
-        await axios.post(`/api/seats/initialize?date=${selectedDate}`);
-        setInitialized(true);
-      } catch (error) {
-        console.error('Error initializing seats:', error);
-        setInitialized(true); // Continue even if already initialized
-      }
-    };
-
-    initializeSeats();
-  }, [selectedDate]);
-
-  // Fetch seats when route or date changes
-  useEffect(() => {
-    if (initialized) {
-      fetchSeats();
-    }
-  }, [selectedRoute, selectedDate, initialized]);
-
   const fetchSeats = useCallback(async () => {
     setLoading(true);
     try {
@@ -99,6 +88,26 @@ function App() {
       setLoading(false);
     }
   }, [selectedRoute, selectedDate, storageAllowed, storageKey]);
+
+  // Initialize and fetch seats when date or route changes
+  useEffect(() => {
+    const initAndFetch = async () => {
+      setLoading(true);
+      try {
+        // Initialize seats for the selected date
+        await axios.post(`/api/seats/initialize?date=${selectedDate}`);
+        setInitialized(true);
+
+        // Then fetch the seats
+        await fetchSeats();
+      } catch (error) {
+        console.error('Error initializing seats:', error);
+        setLoading(false);
+      }
+    };
+
+    initAndFetch();
+  }, [selectedDate, selectedRoute, fetchSeats]);
 
   const handleSeatClick = useCallback((seat) => {
     if (seat.isBooked) {
@@ -458,20 +467,49 @@ function App() {
                 </div>
               </div>
 
-              {/* Date - Enhanced Styling */}
-              <div className="flex items-center gap-2 bg-slate-800/50 p-2 md:p-2.5 rounded-xl border border-white/10 backdrop-blur-sm hover:border-white/20 transition-colors">
-                <span className="font-semibold text-blue-300 text-xs md:text-sm hidden md:inline">Date:</span>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    setSelectedDate(e.target.value);
-                    setSelectedSeats([]);
-                    setShowBookingForm(false);
-                  }}
-                  className="bg-transparent border-none focus:ring-0 text-white font-medium text-xs md:text-sm cursor-pointer 
+              {/* Date Selection Group */}
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                {/* Quick Select Buttons */}
+                <div className="flex bg-slate-800/50 p-1 rounded-xl border border-white/10 backdrop-blur-sm">
+                  {['Yesterday', 'Today', 'Tomorrow'].map((label, idx) => {
+                    const offset = idx - 1; // -1, 0, 1
+                    const dateStr = getLocalDate(offset);
+                    const isActive = selectedDate === dateStr;
+
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => {
+                          setSelectedDate(dateStr);
+                          setSelectedSeats([]);
+                          setShowBookingForm(false);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all duration-200
+                                      ${isActive
+                            ? 'bg-blue-600 text-white shadow-lg'
+                            : 'text-white/60 hover:text-white hover:bg-white/5'
+                          }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Date Picker */}
+                <div className="flex items-center gap-2 bg-slate-800/50 p-2 md:p-2.5 rounded-xl border border-white/10 backdrop-blur-sm hover:border-white/20 transition-colors">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setSelectedSeats([]);
+                      setShowBookingForm(false);
+                    }}
+                    className="bg-transparent border-none focus:ring-0 text-white font-medium text-xs md:text-sm cursor-pointer 
                            [color-scheme:dark] focus:outline-none"
-                />
+                  />
+                </div>
               </div>
 
               {/* Refresh - Enhanced Styling */}
@@ -489,24 +527,25 @@ function App() {
           </div>
 
           {/* Statistics */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-            <div className="glass-card p-4 text-center">
-              <div className="text-3xl font-bold text-blue-400">{seats.length}</div>
-              <div className="text-sm text-white/70 mt-1">Total Seats</div>
+          {/* Statistics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 mt-4">
+            <div className="glass-card p-2 md:p-3 text-center">
+              <div className="text-xl md:text-2xl font-bold text-blue-400">{seats.length}</div>
+              <div className="text-xs text-white/70 mt-0.5">Total Seats</div>
             </div>
-            <div className="glass-card p-4 text-center">
-              <div className="text-3xl font-bold text-green-400">{bookedCount}</div>
-              <div className="text-sm text-white/70 mt-1">Booked</div>
+            <div className="glass-card p-2 md:p-3 text-center">
+              <div className="text-xl md:text-2xl font-bold text-green-400">{bookedCount}</div>
+              <div className="text-xs text-white/70 mt-0.5">Booked</div>
             </div>
-            <div className="glass-card p-4 text-center">
-              <div className="text-3xl font-bold text-slate-400">{availableCount}</div>
-              <div className="text-sm text-white/70 mt-1">Available</div>
+            <div className="glass-card p-2 md:p-3 text-center">
+              <div className="text-xl md:text-2xl font-bold text-slate-400">{availableCount}</div>
+              <div className="text-xs text-white/70 mt-0.5">Available</div>
             </div>
-            <div className="glass-card p-4 text-center">
-              <div className="text-3xl font-bold text-yellow-400">
+            <div className="glass-card p-2 md:p-3 text-center">
+              <div className="text-xl md:text-2xl font-bold text-yellow-400">
                 {seats.length > 0 ? Math.round((bookedCount / seats.length) * 100) : 0}%
               </div>
-              <div className="text-sm text-white/70 mt-1">Occupancy</div>
+              <div className="text-xs text-white/70 mt-0.5">Occupancy</div>
             </div>
           </div>
         </div>

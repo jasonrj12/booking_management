@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import axios from 'axios';
 import SeatLayout from './components/SeatLayout';
-import { FaBus, FaRoute, FaSyncAlt, FaUsers, FaTimes } from 'react-icons/fa';
+import { FaBus, FaRoute, FaSyncAlt, FaUsers, FaTimes, FaCog } from 'react-icons/fa';
 import { jsPDF } from 'jspdf';
 import './index.css';
 
@@ -39,6 +39,10 @@ function App() {
     if (typeof window === 'undefined') return 'unknown';
     return localStorage.getItem('storagePermissionStatus') || 'unknown';
   });
+
+  // Settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [newSeatCount, setNewSeatCount] = useState(51);
 
   const routes = ['Mannar to Colombo', 'Colombo to Mannar'];
   const storageAllowed = !isMobile || storageStatus === 'granted';
@@ -115,7 +119,7 @@ function App() {
   // Lock body scroll when passenger list modal is open
   useEffect(() => {
     // Lock scroll if any modal is open
-    const anyModalOpen = showPassengerList || showBookingForm || showBookingDetails || showConfirmDialog || showStoragePrompt;
+    const anyModalOpen = showPassengerList || showBookingForm || showBookingDetails || showConfirmDialog || showStoragePrompt || showSettings;
 
     if (anyModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -127,7 +131,7 @@ function App() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [showPassengerList, showBookingForm, showBookingDetails, showConfirmDialog, showStoragePrompt]);
+  }, [showPassengerList, showBookingForm, showBookingDetails, showConfirmDialog, showStoragePrompt, showSettings]);
 
   const handleSeatClick = useCallback((seat) => {
     if (seat.isBooked) {
@@ -231,6 +235,23 @@ function App() {
       alert(error.response?.data?.message || 'Error updating pickup status');
     }
   }, [fetchSeats]);
+
+  const handleUpdateSeatCount = async () => {
+    if (!newSeatCount || newSeatCount < 5) return;
+
+    setLoading(true);
+    try {
+      // Force re-initialization with new seat count
+      await axios.post(`/api/seats/initialize?date=${selectedDate}&seatCount=${newSeatCount}&force=true`);
+      await fetchSeats();
+      setShowSettings(false);
+    } catch (error) {
+      console.error('Error updating layout:', error);
+      alert('Error updating layout. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const requestStoragePermission = async (allow) => {
     if (typeof window === 'undefined') return;
@@ -589,6 +610,20 @@ function App() {
                 >
                   <FaSyncAlt className="text-blue-300 group-hover:rotate-180 transition-transform duration-500" />
                 </button>
+
+                {/* Settings Button */}
+                <button
+                  onClick={() => {
+                    setNewSeatCount(seats.length || 51);
+                    setShowSettings(true);
+                  }}
+                  className="p-2 md:p-2.5 bg-slate-800/50 hover:bg-slate-700/50 
+                           rounded-xl border border-white/10 transition-all duration-200 
+                           hover:scale-105 active:scale-95 group"
+                  title="Settings"
+                >
+                  <FaCog className="text-white/70 group-hover:text-white group-hover:rotate-90 transition-transform duration-500" />
+                </button>
               </div>
             </div>
           </div>
@@ -708,8 +743,6 @@ function App() {
           </div>
         )}
 
-
-
         {/* Confirm Dialog */}
         {showConfirmDialog && seatToCancel && (
           <Suspense fallback={null}>
@@ -798,6 +831,46 @@ function App() {
                 }>
                   <PassengerList seats={seats} />
                 </Suspense>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="glass-effect p-5 w-full max-w-sm animate-slide-up">
+              <h3 className="text-xl font-semibold mb-3">Seat Configuration</h3>
+              <p className="text-white/80 text-sm mb-4">
+                Set the total number of seats for this route. <br />
+                <span className="text-blue-400 font-bold">Note: This will update the layout but preserve existing bookings where possible.</span>
+              </p>
+
+              <div className="mb-4">
+                <label className="block text-xs text-white/60 mb-1">Total Seats</label>
+                <input
+                  type="number"
+                  value={newSeatCount}
+                  onChange={(e) => setNewSeatCount(parseInt(e.target.value))}
+                  className="w-full bg-slate-800/50 border border-white/10 rounded-lg p-2 text-white focus:border-blue-500 outline-none"
+                  min="5"
+                  max="100"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  className="btn-secondary"
+                  onClick={() => setShowSettings(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn-primary bg-blue-600 hover:bg-blue-700 border-blue-500"
+                  onClick={handleUpdateSeatCount}
+                >
+                  Update Layout
+                </button>
               </div>
             </div>
           </div>

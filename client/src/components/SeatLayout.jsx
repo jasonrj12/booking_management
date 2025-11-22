@@ -5,21 +5,24 @@ import { MdAirlineSeatReclineNormal } from 'react-icons/md';
 const SeatLayout = memo(({ seats, onSeatClick, selectedSeats = [] }) => {
     // Memoize seat separation and row calculations
     const { standardRows, backRowSeats } = useMemo(() => {
-        // Separate standard seats (1-46) and back row seats (47-51)
-        const standardSeats = seats.filter(seat => seat.seatNumber <= 46);
-        const backRowSeats = seats.filter(seat => seat.seatNumber >= 47 && seat.seatNumber <= 51);
+        if (!seats || seats.length === 0) return { standardRows: [], backRowSeats: [] };
+
+        // Sort seats by seat number just in case
+        const sortedSeats = [...seats].sort((a, b) => a.seatNumber - b.seatNumber);
+        const totalSeats = sortedSeats.length;
+
+        // The last 5 seats are always the back row
+        const backRowStartIndex = Math.max(0, totalSeats - 5);
+
+        const standardSeats = sortedSeats.slice(0, backRowStartIndex);
+        const backRowSeats = sortedSeats.slice(backRowStartIndex);
 
         // Group standard seats into rows
         const standardRows = [];
 
-        // Rows 1-11: seats 1-44 (11 rows of 4 seats each)
-        for (let i = 0; i < 44; i += 4) {
+        // Standard rows are chunks of 4
+        for (let i = 0; i < standardSeats.length; i += 4) {
             standardRows.push(standardSeats.slice(i, i + 4));
-        }
-
-        // Row 12: seats 45-46 (separate row)
-        if (standardSeats.length >= 46) {
-            standardRows.push(standardSeats.slice(44, 46)); // Just seats 45 and 46
         }
 
         return { standardRows, backRowSeats };
@@ -79,11 +82,11 @@ const SeatLayout = memo(({ seats, onSeatClick, selectedSeats = [] }) => {
             <div className="space-y-2 md:space-y-3">
                 {/* Standard rows (2-2 layout) */}
                 {standardRows.map((row, rowIndex) => {
-                    // Check if this is the last row with only 2 seats (seats 45-46)
-                    const isLastPartialRow = row.length === 2 && row[0]?.seatNumber === 45;
+                    // Check if this is a partial row (less than 4 seats)
+                    const isPartialRow = row.length < 4;
 
-                    if (isLastPartialRow) {
-                        // Render seats 45-46 on the RIGHT side
+                    if (isPartialRow) {
+                        // Render partial row on the RIGHT side
                         return (
                             <div key={rowIndex} className="flex gap-2 md:gap-3 justify-center items-center">
                                 {/* Empty left side */}
@@ -97,7 +100,7 @@ const SeatLayout = memo(({ seats, onSeatClick, selectedSeats = [] }) => {
                                     <div className="h-full w-1 bg-gradient-to-b from-transparent via-blue-500/30 to-transparent"></div>
                                 </div>
 
-                                {/* Right seats (seats 45-46) */}
+                                {/* Right seats */}
                                 <div className="flex gap-1.5 md:gap-2">
                                     {row.map((seat) => (
                                         <SeatCard

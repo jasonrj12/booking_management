@@ -2,13 +2,19 @@ import React, { memo, useMemo } from 'react';
 import { FaUser, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
 
 // Individual passenger item component
-const PassengerItem = memo(({ seat }) => {
+const PassengerItem = memo(({ group }) => {
+    const { passengerName, passengerPhone, seats } = group;
+
     const handleCall = (e) => {
         e.stopPropagation();
-        if (seat.passengerPhone) {
-            window.location.href = `tel:${seat.passengerPhone}`;
+        if (passengerPhone) {
+            window.location.href = `tel:${passengerPhone}`;
         }
     };
+
+    // Sort seats numerically
+    const sortedSeats = [...seats].sort((a, b) => a.seatNumber - b.seatNumber);
+    const seatNumbers = sortedSeats.map(s => s.seatNumber).join(', ');
 
     return (
         <div className="bg-white/5 p-2.5 md:p-3 rounded-lg border border-white/5">
@@ -19,30 +25,32 @@ const PassengerItem = memo(({ seat }) => {
                         <div className="flex items-center gap-1.5">
                             <FaUser className="text-xs text-blue-300" />
                             <span className="font-semibold text-sm md:text-base">
-                                {seat.passengerName || <span className="text-white/50 italic">Guest</span>}
+                                {passengerName || <span className="text-white/50 italic">Guest</span>}
                             </span>
                         </div>
                         <div className="text-xs md:text-sm">
-                            <span className="text-white/60">Seat no:</span>{' '}
-                            <span className="font-bold text-green-400">#{seat.seatNumber}</span>
+                            <span className="text-white/60">Seat{seats.length > 1 ? 's' : ''}:</span>{' '}
+                            <span className="font-bold text-green-400">#{seatNumbers}</span>
                         </div>
                     </div>
 
                     {/* Phone Number */}
                     <div className="text-xs md:text-sm text-white/70 flex items-center gap-1.5">
                         <FaPhone className="text-[10px] text-green-300" />
-                        {seat.passengerPhone}
+                        {passengerPhone || <span className="italic opacity-50">No phone</span>}
                     </div>
                 </div>
 
                 {/* Call Button */}
-                <button
-                    onClick={handleCall}
-                    className="shrink-0 p-2 md:p-2.5 bg-green-600/20 hover:bg-green-600/40 rounded-lg border border-green-500/30 transition-all duration-200 hover:scale-105 active:scale-95 group"
-                    title={`Call ${seat.passengerName || 'passenger'}`}
-                >
-                    <FaPhone className="text-sm md:text-base text-green-400 group-hover:text-green-300" />
-                </button>
+                {passengerPhone && (
+                    <button
+                        onClick={handleCall}
+                        className="shrink-0 p-2 md:p-2.5 bg-green-600/20 hover:bg-green-600/40 rounded-lg border border-green-500/30 transition-all duration-200 hover:scale-105 active:scale-95 group"
+                        title={`Call ${passengerName || 'passenger'}`}
+                    >
+                        <FaPhone className="text-sm md:text-base text-green-400 group-hover:text-green-300" />
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -51,7 +59,10 @@ const PassengerItem = memo(({ seat }) => {
 PassengerItem.displayName = 'PassengerItem';
 
 // Location group component
-const LocationGroup = memo(({ location, passengers }) => {
+const LocationGroup = memo(({ location, passengerGroups }) => {
+    // Calculate total passengers in this location
+    const totalPassengers = passengerGroups.reduce((acc, group) => acc + group.seats.length, 0);
+
     return (
         <div className="glass-card p-3 md:p-4">
             {/* Location Header */}
@@ -62,17 +73,17 @@ const LocationGroup = memo(({ location, passengers }) => {
                         {location || 'No Location Specified'}
                     </h3>
                     <p className="text-xs md:text-sm text-white/60 mt-0.5">
-                        {passengers.length} {passengers.length === 1 ? 'passenger' : 'passengers'}
+                        {totalPassengers} {totalPassengers === 1 ? 'passenger' : 'passengers'}
                     </p>
                 </div>
             </div>
 
             {/* Passengers at this location */}
             <div className="space-y-2">
-                {passengers.map((seat) => (
+                {passengerGroups.map((group) => (
                     <PassengerItem
-                        key={seat._id}
-                        seat={seat}
+                        key={group.id}
+                        group={group}
                     />
                 ))}
             </div>
@@ -85,24 +96,46 @@ LocationGroup.displayName = 'LocationGroup';
 const PassengerList = memo(({ seats }) => {
     const bookedSeats = seats.filter(seat => seat.isBooked);
 
-    // Group seats by boarding location
+    // Group seats by boarding location, then by passenger phone
     const groupedByLocation = useMemo(() => {
-        const groups = {};
+        const locationGroups = {};
+
         bookedSeats.forEach(seat => {
             const location = seat.boardingPoint || 'No Location';
-            if (!groups[location]) {
-                groups[location] = [];
+            if (!locationGroups[location]) {
+                locationGroups[location] = {};
             }
-            groups[location].push(seat);
+
+            // Group by phone number. If no phone, treat as unique passenger (using ID)
+            const passengerKey = seat.passengerPhone || `nophone_${seat._id}`;
+
+            if (!locationGroups[location][passengerKey]) {
+                locationGroups[location][passengerKey] = {
+                    id: passengerKey,
+                    passengerName: seat.passengerName,
+                    passengerPhone: seat.passengerPhone,
+                    seats: []
+                };
+            }
+
+            locationGroups[location][passengerKey].seats.push(seat);
         });
 
-        // Sort passengers within each location by seat number
-        Object.keys(groups).forEach(location => {
-            groups[location].sort((a, b) => a.seatNumber - b.seatNumber);
-        });
+        // Convert to array structure and sort
+        return Object.entries(locationGroups)
+            .map(([location, passengersObj]) => {
+                // Convert passengers object to array
+                const passengerGroups = Object.values(passengersObj);
 
-        // Convert to array and sort by location name
-        return Object.entries(groups)
+                // Sort passenger groups by their first seat number
+                passengerGroups.sort((a, b) => {
+                    const minSeatA = Math.min(...a.seats.map(s => s.seatNumber));
+                    const minSeatB = Math.min(...b.seats.map(s => s.seatNumber));
+                    return minSeatA - minSeatB;
+                });
+
+                return [location, passengerGroups];
+            })
             .sort(([a], [b]) => {
                 // Put "No Location" at the end
                 if (a === 'No Location') return 1;
@@ -121,11 +154,11 @@ const PassengerList = memo(({ seats }) => {
                 </div>
             ) : (
                 <div className="space-y-3 md:space-y-4 max-h-[400px] md:max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                    {groupedByLocation.map(([location, passengers]) => (
+                    {groupedByLocation.map(([location, passengerGroups]) => (
                         <LocationGroup
                             key={location}
                             location={location}
-                            passengers={passengers}
+                            passengerGroups={passengerGroups}
                         />
                     ))}
                 </div>

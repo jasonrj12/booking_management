@@ -47,19 +47,28 @@ setInterval(() => {
 }, 300000);
 
 // Helper function to determine seat position
-const getSeatPosition = (seatNumber) => {
-    // Back row (seats 47-51) - 5 seats
-    if (seatNumber >= 47 && seatNumber <= 51) {
-        if (seatNumber === 47 || seatNumber === 51) return 'Window';
-        if (seatNumber === 48 || seatNumber === 50) return 'Aisle';
-        return 'Middle'; // seat 49
+const getSeatPosition = (seatNumber, totalSeats) => {
+    const backRowStart = totalSeats - 4; // e.g., for 51 seats, back row starts at 47
+
+    // Back row (Last 5 seats)
+    if (seatNumber >= backRowStart) {
+        if (seatNumber === backRowStart || seatNumber === totalSeats) return 'Window';
+        if (seatNumber === backRowStart + 1 || seatNumber === totalSeats - 1) return 'Aisle';
+        return 'Middle';
     }
 
-    // Special case for seats 45 and 46 (Last partial row on the right)
-    if (seatNumber === 45) return 'Aisle';
-    if (seatNumber === 46) return 'Window';
+    const standardSeatsCount = backRowStart - 1;
+    const remainder = standardSeatsCount % 4;
+    const lastFullRowSeat = standardSeatsCount - remainder;
 
-    // Standard rows (seats 1-44)
+    // Partial row (at the end of standard seats, before back row)
+    if (seatNumber > lastFullRowSeat) {
+        // If it's the last seat of the partial row, it's a Window seat
+        if (seatNumber === standardSeatsCount) return 'Window';
+        return 'Aisle';
+    }
+
+    // Standard rows (1-44 in 51 seat config)
     const position = (seatNumber - 1) % 4;
     if (position === 0 || position === 3) return 'Window';
     if (position === 1 || position === 2) return 'Aisle';
@@ -69,27 +78,83 @@ const getSeatPosition = (seatNumber) => {
 // Initialize seats for both routes (call once to set up the database)
 router.post('/initialize', async (req, res) => {
     try {
-        const { date } = req.query; // Optional date parameter
+        const { date, seatCount, force } = req.query; // Optional date, seatCount, and force parameters
         const targetDate = date || new Date().toISOString().split('T')[0]; // Default to today (YYYY-MM-DD)
+        const totalSeats = parseInt(seatCount) || 51; // Default to 51 seats if not specified
 
         const routes = ['Mannar to Colombo', 'Colombo to Mannar'];
         let initialized = 0;
 
         for (const route of routes) {
             // Check if seats already exist for this route and date
-            const existingSeats = await seatsCollection
+            const existingSnapshot = await seatsCollection
                 .where('route', '==', route)
                 .where('date', '==', targetDate)
-                .limit(1)
                 .get();
 
-            if (!existingSeats.empty) {
-                continue; // Skip if seats already initialized for this route and date
+            if (!existingSnapshot.empty) {
+                if (force === 'true') {
+                    // Smart update: Preserve bookings, update layout
+                    const existingSeatsMap = new Map();
+                    existingSnapshot.forEach(doc => {
+                        existingSeatsMap.set(doc.data().seatNumber, doc);
+                    });
+
+                    const batch = db.batch();
+
+                    // 1. Update existing seats and create new ones
+                    for (let i = 1; i <= totalSeats; i++) {
+                        const newPosition = getSeatPosition(i, totalSeats);
+                        const newRowNumber = Math.ceil(i / 4);
+
+                        if (existingSeatsMap.has(i)) {
+                            // Update existing seat (preserve booking data, update layout info)
+                            const doc = existingSeatsMap.get(i);
+                            batch.update(doc.ref, {
+                                position: newPosition,
+                                rowNumber: newRowNumber,
+                                updatedAt: new Date()
+                            });
+                            // Remove from map to track what's left (to be deleted)
+                            existingSeatsMap.delete(i);
+                        } else {
+                            // Create new seat
+                            const newSeatRef = seatsCollection.doc();
+                            batch.set(newSeatRef, {
+                                seatNumber: i,
+                                route: route,
+                                date: targetDate,
+                                isBooked: false,
+                                isPickedUp: false,
+                                passengerName: '',
+                                passengerPhone: '',
+                                boardingPoint: '',
+                                gender: '',
+                                rowNumber: newRowNumber,
+                                position: newPosition,
+                                createdAt: new Date(),
+                                updatedAt: new Date()
+                            });
+                        }
+                    }
+
+                    // 2. Delete seats that are no longer needed (beyond new totalSeats)
+                    for (const [seatNum, doc] of existingSeatsMap) {
+                        batch.delete(doc.ref);
+                    }
+
+                    await batch.commit();
+                    invalidateCache(route, targetDate);
+                    initialized++;
+                    continue; // Done with this route
+                } else {
+                    continue; // Skip if seats already initialized and not forced
+                }
             }
 
-            // Create 51 seats for each route (46 standard + 5 back row)
+            // Create seats (Fresh initialization)
             const batch = db.batch();
-            for (let i = 1; i <= 51; i++) {
+            for (let i = 1; i <= totalSeats; i++) {
                 const seatData = {
                     seatNumber: i,
                     route: route,
@@ -100,8 +165,8 @@ router.post('/initialize', async (req, res) => {
                     passengerPhone: '',
                     boardingPoint: '',
                     gender: '', // 'male' or 'female'
-                    rowNumber: i <= 46 ? Math.ceil(i / 4) : 13, // Back row is row 13
-                    position: getSeatPosition(i),
+                    rowNumber: Math.ceil(i / 4), // Approximate row number
+                    position: getSeatPosition(i, totalSeats),
                     createdAt: new Date(),
                     updatedAt: new Date()
                 };
@@ -116,7 +181,7 @@ router.post('/initialize', async (req, res) => {
 
         res.json({
             success: true,
-            message: `Seats initialized successfully for ${initialized} route(s) on ${targetDate}`
+            message: `Seats initialized/updated successfully for ${initialized} route(s) on ${targetDate} with ${totalSeats} seats`
         });
     } catch (error) {
         console.error('Error initializing seats:', error);

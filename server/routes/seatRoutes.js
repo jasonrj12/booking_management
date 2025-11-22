@@ -55,7 +55,11 @@ const getSeatPosition = (seatNumber) => {
         return 'Middle'; // seat 49
     }
 
-    // Standard rows (seats 1-46)
+    // Special case for seats 45 and 46 (Last partial row on the right)
+    if (seatNumber === 45) return 'Aisle';
+    if (seatNumber === 46) return 'Window';
+
+    // Standard rows (seats 1-44)
     const position = (seatNumber - 1) % 4;
     if (position === 0 || position === 3) return 'Window';
     if (position === 1 || position === 2) return 'Aisle';

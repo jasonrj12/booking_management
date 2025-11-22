@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import axios from 'axios';
 import SeatLayout from './components/SeatLayout';
-import { FaBus, FaRoute, FaSyncAlt } from 'react-icons/fa';
+import { FaBus, FaRoute, FaSyncAlt, FaUsers, FaTimes } from 'react-icons/fa';
 import { jsPDF } from 'jspdf';
 import './index.css';
 
@@ -9,6 +9,7 @@ import './index.css';
 const BookingForm = lazy(() => import('./components/BookingForm'));
 const BookingDetails = lazy(() => import('./components/BookingDetails'));
 const ConfirmDialog = lazy(() => import('./components/ConfirmDialog'));
+const PassengerList = lazy(() => import('./components/PassengerList'));
 
 function App() {
   // Helper to get local date string (YYYY-MM-DD)
@@ -25,6 +26,7 @@ function App() {
   const [selectedSeats, setSelectedSeats] = useState([]); // Array of {seat, gender}
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showBookingDetails, setShowBookingDetails] = useState(false);
+  const [showPassengerList, setShowPassengerList] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState('Mannar to Colombo');
   const [selectedDate, setSelectedDate] = useState(getLocalDate(0)); // YYYY-MM-DD (Local)
   const [loading, setLoading] = useState(false);
@@ -109,6 +111,23 @@ function App() {
 
     initAndFetch();
   }, [selectedDate, selectedRoute, fetchSeats]);
+
+  // Lock body scroll when passenger list modal is open
+  useEffect(() => {
+    // Lock scroll if any modal is open
+    const anyModalOpen = showPassengerList || showBookingForm || showBookingDetails || showConfirmDialog || showStoragePrompt;
+
+    if (anyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showPassengerList, showBookingForm, showBookingDetails, showConfirmDialog, showStoragePrompt]);
 
   const handleSeatClick = useCallback((seat) => {
     if (seat.isBooked) {
@@ -364,7 +383,6 @@ function App() {
       doc.setFont('helvetica', 'italic');
       doc.text(`Pickup Completion: ${completedPercentage}%`, margin, currentY);
     }
-
     const routeSlug = selectedRoute.replace(/\s+/g, '-').toLowerCase();
     doc.save(`passengers-${routeSlug}-${selectedDate}.pdf`);
   };
@@ -376,6 +394,44 @@ function App() {
       // Check if it's a passenger group or single seat
       const isPassengerGroup = seatToCancel.seats && Array.isArray(seatToCancel.seats);
 
+      // Optimistically update UI immediately - remove booked status
+      const seatIdsToCancel = isPassengerGroup
+        ? seatToCancel.seats.map(s => s._id)
+        : [seatToCancel._id];
+
+      // Store previous state for rollback if needed
+      const previousSeats = [...seats];
+
+      // Immediately update the UI
+      const updatedSeats = seats.map(seat => {
+        if (seatIdsToCancel.includes(seat._id)) {
+          return {
+            ...seat,
+            isBooked: false,
+            passengerName: '',
+            passengerPhone: '',
+            boardingPoint: '',
+            gender: '',
+            isPickedUp: false,
+            note: ''
+          };
+        }
+        return seat;
+      });
+
+      setSeats(updatedSeats);
+
+      // Also update localStorage cache immediately
+      if (storageAllowed && typeof window !== 'undefined') {
+        localStorage.setItem(storageKey, JSON.stringify(updatedSeats));
+      }
+
+      // Close dialog immediately for better UX
+      setShowConfirmDialog(false);
+      setSeatToCancel(null);
+      setSelectedSeats([]); // Clear any selected seats immediately
+
+      // Then make the actual API calls in the background
       if (isPassengerGroup) {
         // Cancel all seats in the group
         for (const seat of seatToCancel.seats) {
@@ -386,13 +442,14 @@ function App() {
         await axios.delete(`/api/seats/${seatToCancel._id}/cancel`);
       }
 
+      // Fetch fresh data from server to ensure consistency
       await fetchSeats();
-      setShowConfirmDialog(false);
-      setSeatToCancel(null);
       // Booking(s) cancelled successfully - no alert needed
     } catch (error) {
       console.error('Error cancelling booking:', error);
       alert(error.response?.data?.message || 'Error cancelling booking');
+      // Revert to previous state on error
+      await fetchSeats();
     }
   };
 
@@ -558,6 +615,19 @@ function App() {
               <div className="text-xs text-white/70 mt-0.5">Occupancy</div>
             </div>
           </div>
+
+          {/* Passenger List Button */}
+          {bookedCount > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => setShowPassengerList(true)}
+                className="w-full btn-primary flex items-center justify-center gap-2 py-3"
+              >
+                <FaUsers className="text-lg" />
+                <span>View Passenger List ({bookedCount})</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Main Content */}
@@ -683,6 +753,51 @@ function App() {
                 >
                   Allow storage
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Passenger List Modal */}
+        {showPassengerList && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 animate-fade-in overflow-hidden">
+            <div className="glass-effect w-full max-w-2xl max-h-[90vh] flex flex-col animate-slide-up">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-600/30 p-2 md:p-3 rounded-lg border border-blue-500/50">
+                    <FaUsers className="text-xl md:text-2xl text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-bold">Passenger List</h2>
+                    <p className="text-xs md:text-sm text-white/70 mt-0.5">
+                      {bookedCount} {bookedCount === 1 ? 'passenger' : 'passengers'} booked
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPassengerList(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Close"
+                >
+                  <FaTimes className="text-xl text-white/70 hover:text-white" />
+                </button>
+              </div>
+
+              {/* Passenger List Content */}
+              <div className="flex-1 overflow-y-auto">
+                <Suspense fallback={
+                  <div className="p-6 space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="glass-card p-4 animate-pulse">
+                        <div className="h-6 bg-white/10 rounded mb-2 w-1/2"></div>
+                        <div className="h-4 bg-white/10 rounded w-1/3"></div>
+                      </div>
+                    ))}
+                  </div>
+                }>
+                  <PassengerList seats={seats} />
+                </Suspense>
               </div>
             </div>
           </div>

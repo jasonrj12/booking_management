@@ -1,83 +1,118 @@
 import React, { memo, useMemo } from 'react';
-import { FaUser, FaPhone, FaTrash, FaEdit, FaMapMarkerAlt, FaUserCheck } from 'react-icons/fa';
+import { FaUser, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
 
-// Memoized PassengerCard component to prevent unnecessary re-renders
-const PassengerCard = memo(({ passenger, onEdit }) => {
-    // Use first seat for actions
-    const firstSeat = passenger.seats[0];
-    const seatNumbers = passenger.seats.map(s => s.seatNumber).sort((a, b) => a - b);
+// Individual passenger item component
+const PassengerItem = memo(({ seat }) => {
+    const handleCall = (e) => {
+        e.stopPropagation();
+        if (seat.passengerPhone) {
+            window.location.href = `tel:${seat.passengerPhone}`;
+        }
+    };
 
     return (
-        <div
-            onClick={() => onEdit(firstSeat)} // Re-using onEdit to open details since App.jsx handles it
-            className="glass-card p-3 md:p-4 hover:bg-white/15 transition-all duration-200 cursor-pointer group"
-        >
-            <div className="flex items-center justify-between">
-                <div className="flex-1">
-                    {/* Seat Numbers and Name Row */}
-                    <div className="flex items-center gap-2 md:gap-3 mb-2 flex-wrap">
-                        <div className="flex gap-1.5">
-                            {seatNumbers.map((seatNum, index) => (
-                                <div key={seatNum} className="bg-green-600/30 px-2 py-1 md:px-3 md:py-1 rounded-lg border border-green-500/50 font-bold text-sm md:text-base group-hover:bg-green-600/40 transition-colors">
-                                    #{seatNum}
-                                </div>
-                            ))}
+        <div className="bg-white/5 p-2.5 md:p-3 rounded-lg border border-white/5">
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 space-y-1.5">
+                    {/* Name and Seat */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                            <FaUser className="text-xs text-blue-300" />
+                            <span className="font-semibold text-sm md:text-base">
+                                {seat.passengerName || <span className="text-white/50 italic">Guest</span>}
+                            </span>
                         </div>
-                        <div className="font-semibold text-base md:text-lg flex items-center gap-2">
-                            <FaUser className="text-xs md:text-sm text-blue-300" />
-                            {passenger.passengerName || <span className="text-white/50 italic">Guest</span>}
+                        <div className="text-xs md:text-sm">
+                            <span className="text-white/60">Seat no:</span>{' '}
+                            <span className="font-bold text-green-400">#{seat.seatNumber}</span>
                         </div>
                     </div>
 
-                    {/* Phone Number Row */}
-                    <div className="text-xs md:text-sm text-white/70 flex items-center gap-2">
-                        <FaPhone className="text-[10px] md:text-xs text-green-300" />
-                        {passenger.passengerPhone}
+                    {/* Phone Number */}
+                    <div className="text-xs md:text-sm text-white/70 flex items-center gap-1.5">
+                        <FaPhone className="text-[10px] text-green-300" />
+                        {seat.passengerPhone}
                     </div>
                 </div>
+
+                {/* Call Button */}
+                <button
+                    onClick={handleCall}
+                    className="shrink-0 p-2 md:p-2.5 bg-green-600/20 hover:bg-green-600/40 rounded-lg border border-green-500/30 transition-all duration-200 hover:scale-105 active:scale-95 group"
+                    title={`Call ${seat.passengerName || 'passenger'}`}
+                >
+                    <FaPhone className="text-sm md:text-base text-green-400 group-hover:text-green-300" />
+                </button>
             </div>
         </div>
     );
-}, (prevProps, nextProps) => {
-    // Custom comparison function - only re-render if passenger data changed
-    const prevSeats = prevProps.passenger.seats.map(s => s._id).join(',');
-    const nextSeats = nextProps.passenger.seats.map(s => s._id).join(',');
-
-    return prevSeats === nextSeats &&
-        prevProps.passenger.passengerName === nextProps.passenger.passengerName &&
-        prevProps.passenger.passengerPhone === nextProps.passenger.passengerPhone &&
-        prevProps.passenger.boardingPoint === nextProps.passenger.boardingPoint &&
-        prevProps.passenger.isPickedUp === nextProps.passenger.isPickedUp;
 });
 
-PassengerCard.displayName = 'PassengerCard';
+PassengerItem.displayName = 'PassengerItem';
 
-const PassengerList = memo(({ seats, onEdit }) => {
+// Location group component
+const LocationGroup = memo(({ location, passengers }) => {
+    return (
+        <div className="glass-card p-3 md:p-4">
+            {/* Location Header */}
+            <div className="flex items-start gap-2 mb-3 pb-3 border-b border-white/10">
+                <FaMapMarkerAlt className="text-base md:text-lg text-blue-400 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                    <h3 className="font-bold text-base md:text-lg text-white">
+                        {location || 'No Location Specified'}
+                    </h3>
+                    <p className="text-xs md:text-sm text-white/60 mt-0.5">
+                        {passengers.length} {passengers.length === 1 ? 'passenger' : 'passengers'}
+                    </p>
+                </div>
+            </div>
+
+            {/* Passengers at this location */}
+            <div className="space-y-2">
+                {passengers.map((seat) => (
+                    <PassengerItem
+                        key={seat._id}
+                        seat={seat}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+});
+
+LocationGroup.displayName = 'LocationGroup';
+
+const PassengerList = memo(({ seats }) => {
     const bookedSeats = seats.filter(seat => seat.isBooked);
 
-    // Group seats by passenger phone number
-    const groupedPassengers = useMemo(() => {
+    // Group seats by boarding location
+    const groupedByLocation = useMemo(() => {
         const groups = {};
         bookedSeats.forEach(seat => {
-            const key = seat.passengerPhone;
-            if (!groups[key]) {
-                groups[key] = {
-                    passengerName: seat.passengerName,
-                    passengerPhone: seat.passengerPhone,
-                    boardingPoint: seat.boardingPoint,
-                    seats: [],
-                    isPickedUp: seat.isPickedUp, // Use first seat's pickup status
-                };
+            const location = seat.boardingPoint || 'No Location';
+            if (!groups[location]) {
+                groups[location] = [];
             }
-            groups[key].seats.push(seat);
+            groups[location].push(seat);
         });
-        return Object.values(groups);
+
+        // Sort passengers within each location by seat number
+        Object.keys(groups).forEach(location => {
+            groups[location].sort((a, b) => a.seatNumber - b.seatNumber);
+        });
+
+        // Convert to array and sort by location name
+        return Object.entries(groups)
+            .sort(([a], [b]) => {
+                // Put "No Location" at the end
+                if (a === 'No Location') return 1;
+                if (b === 'No Location') return -1;
+                return a.localeCompare(b);
+            });
     }, [bookedSeats]);
 
     return (
         <div className="glass-effect p-4 md:p-6 h-full">
-
-
             {bookedSeats.length === 0 ? (
                 <div className="text-center py-8 md:py-12 text-white/50">
                     <FaUser className="text-5xl md:text-6xl mx-auto mb-3 md:mb-4 opacity-30" />
@@ -85,12 +120,12 @@ const PassengerList = memo(({ seats, onEdit }) => {
                     <p className="text-xs md:text-sm mt-2">Click on an available seat to book</p>
                 </div>
             ) : (
-                <div className="space-y-2 md:space-y-3 max-h-[400px] md:max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                    {groupedPassengers.map((passenger) => (
-                        <PassengerCard
-                            key={passenger.passengerPhone}
-                            passenger={passenger}
-                            onEdit={onEdit}
+                <div className="space-y-3 md:space-y-4 max-h-[400px] md:max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                    {groupedByLocation.map(([location, passengers]) => (
+                        <LocationGroup
+                            key={location}
+                            location={location}
+                            passengers={passengers}
                         />
                     ))}
                 </div>

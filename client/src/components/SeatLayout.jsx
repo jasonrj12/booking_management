@@ -101,7 +101,7 @@ const SeatLayout = memo(({ seats, onSeatClick, selectedSeats = [] }) => {
                                 <div className="flex gap-1.5 md:gap-2">
                                     {row.map((seat) => (
                                         <SeatCard
-                                            key={seat._id}
+                                            key={`${seat._id}-${seat.isBooked}`}
                                             seat={seat}
                                             onClick={onSeatClick}
                                             isSelected={selectedSeats.some(({ seat: s }) => s._id === seat._id)}
@@ -119,7 +119,7 @@ const SeatLayout = memo(({ seats, onSeatClick, selectedSeats = [] }) => {
                             <div className="flex gap-1.5 md:gap-2">
                                 {row.slice(0, 2).map((seat) => (
                                     <SeatCard
-                                        key={seat._id}
+                                        key={`${seat._id}-${seat.isBooked}`}
                                         seat={seat}
                                         onClick={onSeatClick}
                                         isSelected={selectedSeats.some(({ seat: s }) => s._id === seat._id)}
@@ -136,7 +136,7 @@ const SeatLayout = memo(({ seats, onSeatClick, selectedSeats = [] }) => {
                             <div className="flex gap-1.5 md:gap-2">
                                 {row.slice(2, 4).map((seat) => (
                                     <SeatCard
-                                        key={seat._id}
+                                        key={`${seat._id}-${seat.isBooked}`}
                                         seat={seat}
                                         onClick={onSeatClick}
                                         isSelected={selectedSeats.some(({ seat: s }) => s._id === seat._id)}
@@ -153,7 +153,7 @@ const SeatLayout = memo(({ seats, onSeatClick, selectedSeats = [] }) => {
                         <div className="flex gap-1.5 md:gap-2 justify-center items-center">
                             {backRowSeats.map((seat) => (
                                 <SeatCard
-                                    key={seat._id}
+                                    key={`${seat._id}-${seat.isBooked}`}
                                     seat={seat}
                                     onClick={onSeatClick}
                                     isSelected={selectedSeats.some(({ seat: s }) => s._id === seat._id)}

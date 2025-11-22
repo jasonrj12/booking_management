@@ -60,6 +60,8 @@ const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCanc
     });
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const [showBoardingDropdown, setShowBoardingDropdown] = useState(false);
+    const [boardingSearchTerm, setBoardingSearchTerm] = useState('');
 
     // Disable background scroll when modal is open
     useEffect(() => {
@@ -79,6 +81,12 @@ const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCanc
             });
         }
     }, [seat]);
+
+    // Reset dropdown when route changes
+    useEffect(() => {
+        setShowBoardingDropdown(false);
+        setBoardingSearchTerm('');
+    }, [selectedRoute]);
 
     const validateForm = () => {
         const newErrors = {};
@@ -192,28 +200,83 @@ const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCanc
                         )}
                     </div>
 
-                    {/* Boarding Point */}
+                    {/* Boarding Point - Custom Searchable Dropdown */}
                     {(selectedRoute === 'Mannar to Colombo' || selectedRoute === 'Colombo to Mannar') && (
                         <div>
                             <label className="block text-xs font-medium mb-1 text-blue-200 uppercase tracking-wide">
                                 Boarding Point
                             </label>
                             <div className="relative">
-                                <FaMapMarkerAlt className="absolute left-3 top-3 text-blue-400/50 text-sm" />
-                                <select
-                                    name="boardingPoint"
-                                    value={formData.boardingPoint}
-                                    onChange={handleChange}
-                                    className="w-full bg-slate-900/50 border border-blue-500/20 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white appearance-none cursor-pointer focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
-                                >
-                                    <option value="">Select Point</option>
-                                    {(selectedRoute === 'Mannar to Colombo' ? mannarToColomboBoardingPoints : colomboToMannarBoardingPoints).map((point, index) => (
-                                        <option key={index} value={point} className="bg-slate-900 text-white">
-                                            {point}
-                                        </option>
-                                    ))}
-                                </select>
+                                <FaMapMarkerAlt className="absolute left-3 top-3 text-blue-400/50 text-sm pointer-events-none z-10" />
+
+                                {/* Search Input */}
+                                <input
+                                    type="text"
+                                    value={boardingSearchTerm || formData.boardingPoint}
+                                    onChange={(e) => {
+                                        setBoardingSearchTerm(e.target.value);
+                                        setShowBoardingDropdown(true);
+                                    }}
+                                    onFocus={() => setShowBoardingDropdown(true)}
+                                    className="w-full bg-slate-900/50 border border-blue-500/20 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white placeholder-blue-400/30 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
+                                    placeholder="Search or select boarding point"
+                                />
+
+                                {/* Dropdown List */}
+                                {showBoardingDropdown && (
+                                    <>
+                                        {/* Backdrop to close dropdown */}
+                                        <div
+                                            className="fixed inset-0 z-20"
+                                            onClick={() => {
+                                                setShowBoardingDropdown(false);
+                                                setBoardingSearchTerm('');
+                                            }}
+                                        />
+
+                                        {/* Options List */}
+                                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-blue-500/30 rounded-lg shadow-2xl max-h-[200px] overflow-y-auto z-30 animate-fade-in">
+                                            {(() => {
+                                                const points = selectedRoute === 'Mannar to Colombo'
+                                                    ? mannarToColomboBoardingPoints
+                                                    : colomboToMannarBoardingPoints;
+
+                                                const filtered = points.filter(point =>
+                                                    point.toLowerCase().includes((boardingSearchTerm || '').toLowerCase())
+                                                );
+
+                                                if (filtered.length === 0) {
+                                                    return (
+                                                        <div className="px-4 py-3 text-sm text-white/50 text-center">
+                                                            No locations found
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return filtered.map((point, index) => (
+                                                    <div
+                                                        key={index}
+                                                        onClick={() => {
+                                                            setFormData(prev => ({ ...prev, boardingPoint: point }));
+                                                            setShowBoardingDropdown(false);
+                                                            setBoardingSearchTerm('');
+                                                        }}
+                                                        className={`px-4 py-2.5 text-sm cursor-pointer transition-colors hover:bg-blue-600/20 ${formData.boardingPoint === point
+                                                            ? 'bg-blue-600/30 text-blue-200'
+                                                            : 'text-white/90'
+                                                            }`}
+                                                    >
+                                                        {point}
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </>
+                                )}
                             </div>
+                            <p className="text-xs text-white/40 mt-1">
+                                {(selectedRoute === 'Mannar to Colombo' ? mannarToColomboBoardingPoints : colomboToMannarBoardingPoints).length} locations available
+                            </p>
                         </div>
                     )}
 

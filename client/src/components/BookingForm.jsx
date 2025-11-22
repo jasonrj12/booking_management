@@ -218,7 +218,8 @@ const BookingForm = ({ seat, selectedSeats = [], selectedRoute, onSubmit, onCanc
                                         setShowBoardingDropdown(true);
                                     }}
                                     onFocus={() => setShowBoardingDropdown(true)}
-                                    className="w-full bg-slate-900/50 border border-blue-500/20 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white placeholder-blue-400/30 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
+                                    readOnly={/Mobi|Android/i.test(navigator.userAgent)}
+                                    className="w-full bg-slate-900/50 border border-blue-500/20 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white placeholder-blue-400/30 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all cursor-pointer"
                                     placeholder="Search or select boarding point"
                                 />
 
